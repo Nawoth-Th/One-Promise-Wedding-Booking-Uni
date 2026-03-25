@@ -56,14 +56,15 @@ export const getEvents = async (req: Request, res: Response) => {
             }
         });
 
-        // Fetch manual events
-        const manualEvents = await Event.find();
+        // Fetch manual events with populated team
+        const manualEvents = await Event.find().populate('assignedTeam', 'name role');
         const formattedManualEvents = manualEvents.map(e => ({
             id: e._id,
             title: e.title,
             date: e.date,
             type: 'manual',
-            description: e.description
+            description: e.description,
+            assignedTeam: e.assignedTeam
         }));
 
         res.json([...orderEvents, ...formattedManualEvents]);
@@ -75,7 +76,7 @@ export const getEvents = async (req: Request, res: Response) => {
 // @desc    Create a manual event
 export const createManualEvent = async (req: Request, res: Response) => {
     try {
-        const { title, date, description } = req.body;
+        const { title, date, description, assignedTeam } = req.body;
         const eventDate = new Date(date);
 
         // Overlap Check 1: Other manual events on same day
@@ -105,7 +106,12 @@ export const createManualEvent = async (req: Request, res: Response) => {
             return res.status(400).json({ message: `Date already occupied by an order (${existingOrder.orderNumber})` });
         }
 
-        const newEvent = new Event({ title, date: eventDate, description });
+        const newEvent = new Event({ 
+            title, 
+            date: eventDate, 
+            description,
+            assignedTeam: assignedTeam || []
+        });
         await newEvent.save();
         res.status(201).json(newEvent);
     } catch (error) {

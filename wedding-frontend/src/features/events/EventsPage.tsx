@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react"
+import type { TeamMember } from "@/lib/types"
 import { Calendar } from "@/components/ui/calendar"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Plus, Calendar as CalendarIcon, Info, AlertCircle, Trash2 } from "lucide-react"
+import { Plus, Calendar as CalendarIcon, Info, AlertCircle, Trash2, Users, Check, ExternalLink } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -27,7 +29,9 @@ interface CalendarEvent {
   eventType?: string;
   orderId?: string;
   description?: string;
+  assignedTeam?: { _id?: string; name: string; role: string }[];
 }
+
 
 export default function EventsPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -35,21 +39,27 @@ export default function EventsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [newEvent, setNewEvent] = useState({ title: "", description: "" })
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [selectedTeam, setSelectedTeam] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const loadEvents = async () => {
+  const loadData = async () => {
     try {
-      const data = await api.getEvents()
-      setEvents(data)
+      const [eventsData, teamData] = await Promise.all([
+        api.getEvents(),
+        api.getTeamMembers()
+      ])
+      setEvents(eventsData)
+      setTeamMembers(teamData)
     } catch (err: any) {
-      toast.error("Failed to load events")
+      toast.error("Failed to load schedule data")
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    loadEvents()
+    loadData()
   }, [])
 
   const handleAddEvent = async () => {
@@ -59,12 +69,14 @@ export default function EventsPage() {
       await api.createManualEvent({
         title: newEvent.title,
         description: newEvent.description,
-        date: selectedDate
+        date: selectedDate,
+        assignedTeam: selectedTeam
       })
       toast.success("Manual event added")
       setIsAddModalOpen(false)
       setNewEvent({ title: "", description: "" })
-      loadEvents()
+      setSelectedTeam([])
+      loadData()
     } catch (err: any) {
       toast.error(err.message || "Failed to add event")
     } finally {
@@ -77,7 +89,7 @@ export default function EventsPage() {
     try {
       await api.deleteManualEvent(id)
       toast.success("Event deleted")
-      loadEvents()
+      loadData()
     } catch (err: any) {
       toast.error(err.message || "Failed to delete event")
     }
@@ -95,7 +107,7 @@ export default function EventsPage() {
 
   const modifiersStyles = {
     order: { borderBottom: '2px solid hsl(var(--primary))' },
-    manual: { borderBottom: '2px solid hsl(var(--destructive))' },
+    manual: { borderBottom: '2px solid #f97316' },
   }
 
   return (
@@ -142,6 +154,33 @@ export default function EventsPage() {
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                 />
               </div>
+
+              <div className="grid gap-2">
+                <Label>Assign Team Members</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {teamMembers.map((member) => (
+                    <div key={member._id || member.name} className="flex items-center space-x-2 bg-muted/50 p-2 rounded-lg border">
+                      <Checkbox 
+                        id={member._id} 
+                        checked={!!member._id && selectedTeam.includes(member._id)}
+                        onCheckedChange={(checked) => {
+                          const mid = member._id
+                          if (!mid) return
+                          if (checked) setSelectedTeam([...selectedTeam, mid])
+                          else setSelectedTeam(selectedTeam.filter(id => id !== mid))
+                        }}
+                      />
+                      <label htmlFor={member._id} className="text-xs font-medium cursor-pointer leading-none">
+                        {member.name}
+                        <span className="block text-[10px] text-muted-foreground font-normal">{member.role}</span>
+                      </label>
+                    </div>
+                  ))}
+                  {teamMembers.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic col-span-2">No team members available.</p>
+                  )}
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
@@ -177,7 +216,7 @@ export default function EventsPage() {
               <span>Wedding / Order</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive" />
+              <div className="w-3 h-3 rounded-full bg-orange-500" />
               <span>Manual Block</span>
             </div>
           </div>
@@ -213,7 +252,7 @@ export default function EventsPage() {
                     className={`p-4 rounded-xl border-l-4 shadow-sm transition-all hover:translate-x-1 ${
                       event.type === 'order' 
                         ? 'bg-primary/5 border-primary' 
-                        : 'bg-destructive/5 border-destructive'
+                        : 'bg-orange-500/5 border-orange-500'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1">
@@ -229,7 +268,7 @@ export default function EventsPage() {
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
-                        <Badge variant={event.type === 'order' ? 'secondary' : 'destructive'} className="text-[10px] h-4">
+                        <Badge variant={event.type === 'order' ? 'secondary' : 'outline'} className={`text-[10px] h-4 ${event.type === 'manual' ? 'border-orange-500 text-orange-600' : ''}`}>
                           {event.type.toUpperCase()}
                         </Badge>
                       </div>
@@ -239,16 +278,49 @@ export default function EventsPage() {
                         "{event.description}"
                       </p>
                     )}
-                    {event.orderId && (
-                       <Button 
-                        variant="link" 
-                        size="sm" 
-                        className="p-0 h-auto text-xs text-primary mt-2"
-                        asChild
-                      >
-                        <a href={`/admin/orders/${event.orderId}`}>View Full Bill & Details →</a>
-                      </Button>
+
+                    {event.assignedTeam && event.assignedTeam.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                         <div className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1 w-full mb-1">
+                           <Users className="h-3 w-3" /> Assigned Team:
+                         </div>
+                         {event.assignedTeam.map((member) => (
+                           <Badge key={member._id || member.name} variant="outline" className="text-[9px] h-4 bg-background">
+                             {member.name} ({member.role.split(' ')[0]})
+                           </Badge>
+                         ))}
+                      </div>
                     )}
+
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                      {event.type === 'manual' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-[10px] flex items-center gap-1.5"
+                          asChild
+                        >
+                          <a 
+                            href={`https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${format(parseISO(event.date), "yyyyMMdd")}/${format(parseISO(event.date), "yyyyMMdd")}&details=${encodeURIComponent(event.description || '')}&sf=true&output=xml`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-3 w-3" /> Add to G-Cal
+                          </a>
+                        </Button>
+                      )}
+                      
+                      {event.orderId && (
+                         <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-[10px] text-primary"
+                          asChild
+                        >
+                          <a href={`/admin/orders/${event.orderId}`}>View Details →</a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
 
