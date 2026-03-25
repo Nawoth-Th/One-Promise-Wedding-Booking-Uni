@@ -13,7 +13,9 @@ export function MobileNav() {
     { href: "/admin", label: "Orders" },
     { href: "/admin/agreements", label: "Agreements" },
     { href: "/admin/pricing", label: "Pricing" },
+    { href: "/admin/events", label: "Events" },
     { href: "/admin/team", label: "Team" },
+    { href: "/admin/locations", label: "Locations" },
   ]
 
   return (
