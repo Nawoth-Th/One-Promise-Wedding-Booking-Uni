@@ -1,0 +1,135 @@
+import { Request, Response } from 'express';
+import { Order } from '../booking/Order';
+import { TeamMember } from '../team-location/TeamMember';
+import { sendEmail } from '../../utils/sendEmail';
+import { format } from 'date-fns';
+
+// @desc    Get busy team members for a specific date
+export const getAvailability = async (req: Request, res: Response) => {
+    try {
+        const { date } = req.query;
+        if (!date) return res.status(400).json({ message: 'Date is required' });
+
+        const targetDate = new Date(date as string);
+        const startOfDay = new Date(targetDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(targetDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const orders = await Order.find({
+            $or: [
+                { 'wedding.date': { $gte: startOfDay, $lte: endOfDay } },
+                { 'homecoming.date': { $gte: startOfDay, $lte: endOfDay } },
+                { 'engagement.date': { $gte: startOfDay, $lte: endOfDay } },
+                { 'preShoot.date': { $gte: startOfDay, $lte: endOfDay } }
+            ]
+        });
+
+        const busyMemberIds = new Set<string>();
+        orders.forEach(order => {
+            if (order.wedding?.date && isSameDay(order.wedding.date, targetDate)) {
+                order.assignments?.wedding?.forEach(id => busyMemberIds.add(id));
+            }
+            if (order.homecoming?.date && isSameDay(order.homecoming.date, targetDate)) {
+                order.assignments?.homecoming?.forEach(id => busyMemberIds.add(id));
+            }
+            if (order.engagement?.date && isSameDay(order.engagement.date, targetDate)) {
+                order.assignments?.engagement?.forEach(id => busyMemberIds.add(id));
+            }
+            if (order.preShoot?.date && isSameDay(order.preShoot.date, targetDate)) {
+                order.assignments?.preShoot?.forEach(id => busyMemberIds.add(id));
+            }
+        });
+
+        res.json(Array.from(busyMemberIds));
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Assign team members to events
+export const updateAssignments = async (req: Request, res: Response) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        const oldAssignments = { ...(order.assignments || {}) };
+
+        // Overlap Validation for assignments
+        if (req.body.assignments) {
+            const newAssignments = req.body.assignments;
+            const events: ("wedding" | "homecoming" | "engagement" | "preShoot")[] = ["wedding", "homecoming", "engagement", "preShoot"];
+            
+            for (const eventType of events) {
+                const memberIds = newAssignments[eventType];
+                if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) continue;
+
+                const eventDate = (req.body[eventType]?.date || order[eventType]?.date);
+                if (!eventDate) continue;
+
+                const targetDate = new Date(eventDate);
+                targetDate.setHours(0, 0, 0, 0);
+
+                const startOfDay = new Date(targetDate);
+                const endOfDay = new Date(targetDate);
+                endOfDay.setHours(23, 59, 59, 999);
+
+                const overlappingOrders = await Order.find({
+                    _id: { $ne: order._id },
+                    $or: [
+                        { 'wedding.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.wedding': { $in: memberIds } },
+                        { 'homecoming.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.homecoming': { $in: memberIds } },
+                        { 'engagement.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.engagement': { $in: memberIds } },
+                        { 'preShoot.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.preShoot': { $in: memberIds } }
+                    ]
+                });
+
+                if (overlappingOrders.length > 0) {
+                    return res.status(400).json({ 
+                        message: `Overlap detected: One or more members are already assigned to Order ${overlappingOrders[0].orderNumber} on this date.`,
+                        details: overlappingOrders.map(o => ({ orderNumber: o.orderNumber, date: targetDate }))
+                    });
+                }
+            }
+        }
+
+        // Update assignments
+        if (req.body.assignments) order.assignments = { ...order.assignments, ...req.body.assignments };
+        const updatedOrder = await order.save();
+
+        // Handle Email Notifications for NEW assignments (Member 4 - You)
+        if (req.body.assignments) {
+            const events: ("wedding" | "homecoming" | "engagement" | "preShoot")[] = ["wedding", "homecoming", "engagement", "preShoot"];
+            for (const eventType of events) {
+                const newIds = req.body.assignments[eventType] || [];
+                const oldIds = oldAssignments[eventType] || [];
+                const addedIds = newIds.filter((id: string) => !oldIds.includes(id));
+
+                if (addedIds.length > 0) {
+                    const eventDate = updatedOrder[eventType]?.date;
+                    for (const memberId of addedIds) {
+                        const member = await TeamMember.findById(memberId);
+                        if (member && member.email) {
+                            const dateStr = eventDate ? format(new Date(eventDate), 'PPP') : 'TBD';
+                            await sendEmail({
+                                email: member.email,
+                                subject: `New Assignment: ${eventType.toUpperCase()} - ${updatedOrder.orderNumber}`,
+                                message: `Hello ${member.name},\n\nYou have been assigned to a new event.\n\nEvent Type: ${eventType.toUpperCase()}\nOrder: ${updatedOrder.orderNumber}\nDate: ${dateStr}\n\nPlease check the admin portal for more details.`
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        res.json(updatedOrder);
+    } catch (error) {
+        res.status(400).json({ message: 'Invalid assignment data' });
+    }
+};
+
+const isSameDay = (d1: Date, d2: Date) => {
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
+}
