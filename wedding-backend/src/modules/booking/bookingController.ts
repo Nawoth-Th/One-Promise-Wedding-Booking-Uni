@@ -1,0 +1,231 @@
+import { Request, Response } from 'express';
+import { Order } from './Order';
+import { TeamMember } from '../team-location/TeamMember';
+import { sendEmail } from '../../utils/sendEmail';
+import { format } from 'date-fns';
+
+// @desc    Get all orders
+// @route   GET /api/orders
+export const getOrders = async (req: Request, res: Response) => {
+    try {
+        const orders = await Order.find({}).sort({ createdAt: -1 });
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get order by ID
+// @route   GET /api/orders/:id
+export const getOrderById = async (req: Request, res: Response) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (order) {
+            res.json(order);
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get order by Token
+export const getOrderByToken = async (req: Request, res: Response) => {
+    try {
+        const { tokenType, token } = req.params;
+        let query: any = {};
+        
+        if (tokenType === 'portal') query.portalToken = token;
+        else if (tokenType === 'tracking') query.trackingToken = token;
+        else if (tokenType === 'agreement') query.agreementToken = token;
+        else return res.status(400).json({ message: 'Invalid token type' });
+
+        const order = await Order.findOne(query);
+        if (order) {
+            res.json(order);
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Create new order
+export const createOrder = async (req: Request, res: Response) => {
+    try {
+        if (req.body.clientInfo && req.body.clientInfo.phone) {
+            req.body.clientInfo.phone = req.body.clientInfo.phone.replace(/\D/g, '');
+        }
+        const order = new Order({
+            ...req.body,
+            trackingToken: req.body.trackingToken || `tk-${Math.random().toString(36).substr(2, 9)}`,
+            agreementToken: req.body.agreementToken || `ag-${Math.random().toString(36).substr(2, 9)}`,
+            portalToken: req.body.portalToken || `pt-${Math.random().toString(36).substr(2, 9)}`,
+        });
+
+        const createdOrder = await order.save();
+        res.status(201).json(createdOrder);
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ message: 'Invalid order data' });
+    }
+};
+
+// @desc    Update order
+// @route   PUT /api/orders/:id
+export const updateOrder = async (req: Request, res: Response) => {
+    console.log(`Updating order ${req.params.id}`, JSON.stringify(req.body, null, 2));
+    try {
+        const order = await Order.findById(req.params.id);
+
+        if (order) {
+            // Store old assignments for change detection
+            const oldAssignments = { ...(order.assignments || {}) };
+
+            // Overlap Validation for assignments
+            if (req.body.assignments) {
+                const newAssignments = req.body.assignments;
+                const events: ("wedding" | "homecoming" | "engagement" | "preShoot")[] = ["wedding", "homecoming", "engagement", "preShoot"];
+                
+                for (const eventType of events) {
+                    const memberIds = newAssignments[eventType];
+                    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) continue;
+
+                    const eventDate = (req.body[eventType]?.date || order[eventType]?.date);
+                    if (!eventDate) continue;
+
+                    const targetDate = new Date(eventDate);
+                    targetDate.setHours(0, 0, 0, 0);
+
+                    // Check for overlaps in other orders
+                    const startOfDay = new Date(targetDate);
+                    const endOfDay = new Date(targetDate);
+                    endOfDay.setHours(23, 59, 59, 999);
+
+                    const overlappingOrders = await Order.find({
+                        _id: { $ne: order._id },
+                        $or: [
+                            { 'wedding.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.wedding': { $in: memberIds } },
+                            { 'homecoming.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.homecoming': { $in: memberIds } },
+                            { 'engagement.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.engagement': { $in: memberIds } },
+                            { 'preShoot.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.preShoot': { $in: memberIds } }
+                        ]
+                    });
+
+                    if (overlappingOrders.length > 0) {
+                        return res.status(400).json({ 
+                            message: `Overlap detected: One or more members are already assigned to Order ${overlappingOrders[0].orderNumber} on this date.`,
+                            details: overlappingOrders.map(o => ({ orderNumber: o.orderNumber, date: targetDate }))
+                        });
+                    }
+                }
+            }
+
+            // Update top-level fields (non-nested)
+            const topLevelFields = ['status', 'orderNumber', 'trackingToken', 'agreementToken', 'portalToken', 'agreementStatus', 'generalAddons'];
+            topLevelFields.forEach(field => {
+                if (req.body[field] !== undefined) {
+                    (order as any)[field] = req.body[field];
+                }
+            });
+
+            // Handle nested objects safely
+            if (req.body.clientInfo) {
+                if (req.body.clientInfo.phone) {
+                    req.body.clientInfo.phone = req.body.clientInfo.phone.replace(/\D/g, '');
+                }
+                Object.assign(order.clientInfo, req.body.clientInfo);
+            }
+            if (req.body.eventDetails) Object.assign(order.eventDetails, req.body.eventDetails);
+            if (req.body.wedding) Object.assign((order as any).wedding || (order.wedding = {}), req.body.wedding);
+            if (req.body.homecoming) Object.assign((order as any).homecoming || (order.homecoming = {}), req.body.homecoming);
+            if (req.body.engagement) Object.assign((order as any).engagement || (order.engagement = {}), req.body.engagement);
+            if (req.body.preShoot) Object.assign((order as any).preShoot || (order.preShoot = {}), req.body.preShoot);
+            
+            if (req.body.financials) {
+                const fin = req.body.financials;
+                if (fin.paymentProof) {
+                    order.financials.paymentProof = {
+                        ...(order.financials.paymentProof || {}),
+                        ...fin.paymentProof
+                    };
+                }
+                // Update other financial fields
+                Object.keys(fin).forEach(key => {
+                    if (key !== 'paymentProof') {
+                        (order.financials as any)[key] = fin[key];
+                    }
+                });
+                order.markModified('financials');
+            }
+            
+            if (req.body.progress) {
+                if (!order.progress) order.progress = { currentStep: 1, history: [] };
+                Object.assign(order.progress, req.body.progress);
+            }
+            if (req.body.agreementDetails) {
+                if (!order.agreementDetails) order.agreementDetails = {};
+                Object.assign(order.agreementDetails, req.body.agreementDetails);
+            }
+            
+            if (req.body.assignments) {
+                order.assignments = { ...order.assignments, ...req.body.assignments };
+                order.markModified('assignments');
+            }
+
+            const updatedOrder = await order.save();
+
+            // Handle Email Notifications for NEW assignments
+            if (req.body.assignments) {
+                const events: ("wedding" | "homecoming" | "engagement" | "preShoot")[] = ["wedding", "homecoming", "engagement", "preShoot"];
+                
+                for (const eventType of events) {
+                    const newIds = req.body.assignments[eventType] || [];
+                    const oldIds = oldAssignments[eventType] || [];
+                    const addedIds = newIds.filter((id: string) => !oldIds.includes(id));
+
+                    if (addedIds.length > 0) {
+                        const eventDate = (updatedOrder as any)[eventType]?.date;
+                        const clientName = updatedOrder.clientInfo.name;
+                        const orderNum = updatedOrder.orderNumber;
+
+                        for (const memberId of addedIds) {
+                            const member = await TeamMember.findById(memberId);
+                            if (member && member.email) {
+                                const dateStr = eventDate ? format(new Date(eventDate), 'PPP') : 'TBD';
+                                await sendEmail({
+                                    email: member.email,
+                                    subject: `New Assignment: ${eventType.toUpperCase()} - ${orderNum}`,
+                                    message: `Hello ${member.name},\n\nYou have been assigned to a new event.\n\nEvent Type: ${eventType.toUpperCase()}\nOrder: ${orderNum}\nClient: ${clientName}\nDate: ${dateStr}\n\nPlease check the admin portal for more details.\n\nBest regards,\nNawography Team`
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            res.json(updatedOrder);
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error("Error updating order:", error);
+        res.status(400).json({ message: 'Invalid order data', error: (error as any).message });
+    }
+};
+
+// @desc    Delete order
+export const deleteOrder = async (req: Request, res: Response) => {
+    try {
+        const order = await Order.findByIdAndDelete(req.params.id);
+        if (order) {
+            res.json({ message: 'Order removed' });
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
