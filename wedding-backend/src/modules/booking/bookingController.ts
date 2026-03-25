@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Order } from './Order';
+import { Event } from '../events/eventModel';
 import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
 import { format } from 'date-fns';
@@ -58,6 +59,32 @@ export const createOrder = async (req: Request, res: Response) => {
         if (req.body.clientInfo && req.body.clientInfo.phone) {
             req.body.clientInfo.phone = req.body.clientInfo.phone.replace(/\D/g, '');
         }
+        const { wedding, homecoming, engagement, preShoot } = req.body;
+        const datesToCheck = [
+            wedding?.date,
+            homecoming?.date,
+            engagement?.date,
+            preShoot?.date
+        ].filter(Boolean);
+
+        for (const date of datesToCheck) {
+            const eventDate = new Date(date);
+            const startOfDay = new Date(eventDate);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(eventDate);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const manualEvent = await Event.findOne({
+                date: { $gte: startOfDay, $lte: endOfDay }
+            });
+
+            if (manualEvent) {
+                return res.status(400).json({ 
+                    message: `Date ${format(eventDate, 'PPP')} is blocked by a manual event: ${manualEvent.title}` 
+                });
+            }
+        }
+
         const order = new Order({
             ...req.body,
             trackingToken: req.body.trackingToken || `tk-${Math.random().toString(36).substr(2, 9)}`,
@@ -139,10 +166,46 @@ export const updateOrder = async (req: Request, res: Response) => {
                 Object.assign(order.clientInfo, req.body.clientInfo);
             }
             if (req.body.eventDetails) Object.assign(order.eventDetails, req.body.eventDetails);
-            if (req.body.wedding) Object.assign((order as any).wedding || (order.wedding = {}), req.body.wedding);
-            if (req.body.homecoming) Object.assign((order as any).homecoming || (order.homecoming = {}), req.body.homecoming);
-            if (req.body.engagement) Object.assign((order as any).engagement || (order.engagement = {}), req.body.engagement);
-            if (req.body.preShoot) Object.assign((order as any).preShoot || (order.preShoot = {}), req.body.preShoot);
+            if (req.body.wedding) {
+                if (req.body.wedding.date && new Date(req.body.wedding.date).getTime() !== new Date(order.wedding?.date || 0).getTime()) {
+                    const eventDate = new Date(req.body.wedding.date);
+                    const start = new Date(eventDate); start.setHours(0,0,0,0);
+                    const end = new Date(eventDate); end.setHours(23,59,59,999);
+                    const manualBlock = await Event.findOne({ date: { $gte: start, $lte: end } });
+                    if (manualBlock) return res.status(400).json({ message: `Wedding date is blocked by manual event: ${manualBlock.title}` });
+                }
+                Object.assign((order as any).wedding || (order.wedding = {}), req.body.wedding);
+            }
+            if (req.body.homecoming) {
+                if (req.body.homecoming.date && new Date(req.body.homecoming.date).getTime() !== new Date(order.homecoming?.date || 0).getTime()) {
+                    const eventDate = new Date(req.body.homecoming.date);
+                    const start = new Date(eventDate); start.setHours(0,0,0,0);
+                    const end = new Date(eventDate); end.setHours(23,59,59,999);
+                    const manualBlock = await Event.findOne({ date: { $gte: start, $lte: end } });
+                    if (manualBlock) return res.status(400).json({ message: `Homecoming date is blocked by manual event: ${manualBlock.title}` });
+                }
+                Object.assign((order as any).homecoming || (order.homecoming = {}), req.body.homecoming);
+            }
+            if (req.body.engagement) {
+                if (req.body.engagement.date && new Date(req.body.engagement.date).getTime() !== new Date(order.engagement?.date || 0).getTime()) {
+                    const eventDate = new Date(req.body.engagement.date);
+                    const start = new Date(eventDate); start.setHours(0,0,0,0);
+                    const end = new Date(eventDate); end.setHours(23,59,59,999);
+                    const manualBlock = await Event.findOne({ date: { $gte: start, $lte: end } });
+                    if (manualBlock) return res.status(400).json({ message: `Engagement date is blocked by manual event: ${manualBlock.title}` });
+                }
+                Object.assign((order as any).engagement || (order.engagement = {}), req.body.engagement);
+            }
+            if (req.body.preShoot) {
+                if (req.body.preShoot.date && new Date(req.body.preShoot.date).getTime() !== new Date(order.preShoot?.date || 0).getTime()) {
+                    const eventDate = new Date(req.body.preShoot.date);
+                    const start = new Date(eventDate); start.setHours(0,0,0,0);
+                    const end = new Date(eventDate); end.setHours(23,59,59,999);
+                    const manualBlock = await Event.findOne({ date: { $gte: start, $lte: end } });
+                    if (manualBlock) return res.status(400).json({ message: `Pre-shoot date is blocked by manual event: ${manualBlock.title}` });
+                }
+                Object.assign((order as any).preShoot || (order.preShoot = {}), req.body.preShoot);
+            }
             
             if (req.body.financials) {
                 const fin = req.body.financials;
