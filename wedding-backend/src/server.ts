@@ -2,7 +2,10 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import dns from 'node:dns';
 import { connectDB } from './config/db';
+
+dns.setDefaultResultOrder('ipv4first');
 
 // Modular Route imports
 import authRoutes from './modules/core/authRoutes';
