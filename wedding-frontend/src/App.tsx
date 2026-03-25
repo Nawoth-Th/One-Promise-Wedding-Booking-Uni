@@ -15,6 +15,7 @@ import TrackPage from './features/agreement/TrackPage'
 
 // Component 03: Event & Schedule
 import OrderDetailPage from './features/events/OrderDetailPage'
+import EventsPage from './features/events/EventsPage'
 
 // Component 04: Team & Location
 import TeamPage from './features/team-location/TeamPage'
@@ -31,6 +32,7 @@ function App() {
         <Route index element={<OrdersPage />} />
         <Route path="orders/new" element={<NewOrderPage />} />
         <Route path="orders/:id" element={<OrderDetailPage />} />
+        <Route path="events" element={<EventsPage />} />
         <Route path="agreements" element={<AgreementsPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="team" element={<TeamPage />} />
