@@ -97,20 +97,34 @@ This project is divided into 4 main modules. Each member is responsible for thei
 
 1. **Clone & Backend Setup**:
 
-```bash
-    cd wedding-backend
-    pnpm install
-    # Configure your .env (see Backend Setup below)
-    pnpm dev
-    ```
+   ```bash
+   cd wedding-backend
+   pnpm install
+   # Create a .env file by copying .env.example
+   cp .env.example .env
+   # Edit .env with your credentials (see below)
+   pnpm dev
+   ```
 
 2. **Frontend Setup**:
 
-```bash
-    cd ../wedding-frontend
-    pnpm install
-    pnpm dev
-    ```
+   ```bash
+   cd ../wedding-frontend
+   pnpm install
+   pnpm dev
+   ```
+
+### ⚠️ Troubleshooting common issues
+
+If you encounter a `[vite] http proxy error` with `ECONNREFUSED` on the frontend, it almost always means the **backend script has crashed**. Please check your backend terminal for errors.
+
+**Common Backend Crashes:**
+- **MongoDB Connection Failure**: If you get a `querySrv ECONNREFUSED` error:
+  1. Ensure you have **whitelisted your IP** in the MongoDB Atlas dashboard.
+  2. Check if your current network (e.g., library/public Wi-Fi) blocks SRV lookups.
+  3. Ensure your `MONGODB_URI` in `.env` is correct.
+
+- **Missing .env**: Make sure you have created the `.env` file in the `wedding-backend` directory and filled it with valid credentials.
 
 ### Environment Configuration
 
