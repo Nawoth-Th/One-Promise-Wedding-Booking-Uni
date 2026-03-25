@@ -186,7 +186,7 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch events');
     return res.json();
   },
-  createManualEvent: async (data: { title: string; date: Date | string; description?: string }): Promise<any> => {
+  createManualEvent: async (data: { title: string; date: Date | string; description?: string, assignedTeam?: string[] }): Promise<any> => {
     const res = await fetch(`${API_BASE}/events/manual`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

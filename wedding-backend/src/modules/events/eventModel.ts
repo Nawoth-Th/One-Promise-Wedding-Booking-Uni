@@ -5,6 +5,7 @@ export interface IEvent extends Document {
     description?: string;
     date: Date;
     type: 'manual';
+    assignedTeam?: mongoose.Types.ObjectId[];
 }
 
 const eventSchema = new Schema<IEvent>(
@@ -13,6 +14,7 @@ const eventSchema = new Schema<IEvent>(
         description: { type: String },
         date: { type: Date, required: true },
         type: { type: String, default: 'manual' },
+        assignedTeam: [{ type: Schema.Types.ObjectId, ref: 'TeamMember' }],
     },
     {
         timestamps: true,
