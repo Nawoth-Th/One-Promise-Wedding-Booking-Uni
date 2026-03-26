@@ -8,12 +8,12 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
-        <div className="flex h-14 items-center justify-between rounded-full border border-border/40 bg-background/60 px-8 backdrop-blur-md shadow-md w-full max-w-5xl supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center justify-between rounded-full border border-border/40 bg-background/60 px-8 backdrop-blur-md shadow-md w-full max-w-[1440px] supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center gap-4 md:gap-8">
                 <MobileNav />
                 <Link to="/admin" className="flex items-center space-x-2">
                 <img src="/icon.png" alt="Logo" width={32} height={32} className="rounded-full" />
-                <span className="font-bold text-lg tracking-tight text-foreground antialiased uppercase">
+                <span className="font-bold text-lg tracking-tight text-foreground antialiased uppercase whitespace-nowrap">
                     ONE PROMISE WEDDINGS
                 </span>
                 </Link>
@@ -35,6 +35,12 @@ export default function AdminLayout() {
                         className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/10"
                     >
                         Pricing
+                    </Link>
+                    <Link
+                        to="/admin/events"
+                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/10"
+                    >
+                        Events
                     </Link>
                     <Link
                         to="/admin/team"

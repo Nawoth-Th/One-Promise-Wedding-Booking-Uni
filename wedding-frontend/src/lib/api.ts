@@ -178,5 +178,32 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to confirm payment');
     return res.json();
+  },
+
+  // Events (Component 03)
+  getEvents: async (): Promise<any[]> => {
+    const res = await fetch(`${API_BASE}/events`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch events');
+    return res.json();
+  },
+  createManualEvent: async (data: { title: string; date: Date | string; description?: string, assignedTeam?: string[] }): Promise<any> => {
+    const res = await fetch(`${API_BASE}/events/manual`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Failed to create manual event');
+    }
+    return res.json();
+  },
+  deleteManualEvent: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/events/manual/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to delete manual event');
   }
 };

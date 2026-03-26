@@ -9,6 +9,9 @@ A comprehensive, internal booking and agreement management system designed for *
 ### 📅 Order & Event Management
 
 - **Comprehensive Details**: Manage client info, event dates, and dynamic locations.
+- **Unified Events Calendar**: A master calendar view that combines automated bookings from orders with manual availability blocks.
+- **Manual Event Management**: Admins can manually add or delete events for specific days (e.g., maintenance, holidays, or private bookings).
+- **Overlap Prevention**: Intelligent logic that prevents manual bookings on days already occupied by orders or other manual events.
 - **Dynamic Pricing Engine**: Full database control over packages, add-ons, and fixed discounts.
 - **Location Library (Unified)**: Select from a pre-built library of Sri Lankan venues (Province/District/Venue) or enter locations manually with Google Maps links.
 - **Google Calendar Integration**: Automatically syncs events to the admin's calendar with full package details and location maps.
@@ -58,7 +61,7 @@ The system has been refactored into a feature-based architecture to support inde
 - **Shared**: Centralized API, Types, Utils, and Global constants.
 - **Booking**: `OrdersPage`, `OrderForm`, `PricingPage`.
 - **Agreement**: `AgreementsPage`, `ClientPortal`, `ProgressTracker`.
-- **Events**: `OrderDetailPage`, `SchedulingView`.
+- **Events**: `EventsPage` (Calendar View), `OrderDetailPage`.
 - **Team-Location**: `TeamPage`, `LocationPage`, `AssignmentTools`.
 
 ---
@@ -119,6 +122,7 @@ This project is divided into 4 main modules. Each member is responsible for thei
 If you encounter a `[vite] http proxy error` with `ECONNREFUSED` on the frontend, it almost always means the **backend script has crashed**. Please check your backend terminal for errors.
 
 **Common Backend Crashes:**
+
 - **MongoDB Connection Failure**: If you get a `querySrv ECONNREFUSED` error:
   1. Ensure you have **whitelisted your IP** in the MongoDB Atlas dashboard.
   2. Check if your current network (e.g., library/public Wi-Fi) blocks SRV lookups.
