@@ -5,6 +5,17 @@ import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
 import { format } from 'date-fns';
 
+// @desc    Get latest (next) order number
+// @route   GET /api/booking/latest-number
+export const getLatestOrderNumber = async (req: Request, res: Response) => {
+    try {
+        const nextOrderNumber = await (Order as any).getNextOrderNumber();
+        res.json({ nextOrderNumber });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 // @desc    Get all orders
 // @route   GET /api/orders
 export const getOrders = async (req: Request, res: Response) => {
@@ -85,8 +96,11 @@ export const createOrder = async (req: Request, res: Response) => {
             }
         }
 
+        const orderNumber = req.body.orderNumber || await (Order as any).getNextOrderNumber();
+
         const order = new Order({
             ...req.body,
+            orderNumber,
             trackingToken: req.body.trackingToken || `tk-${Math.random().toString(36).substr(2, 9)}`,
             agreementToken: req.body.agreementToken || `ag-${Math.random().toString(36).substr(2, 9)}`,
             portalToken: req.body.portalToken || `pt-${Math.random().toString(36).substr(2, 9)}`,

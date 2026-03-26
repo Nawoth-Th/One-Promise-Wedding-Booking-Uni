@@ -193,10 +193,29 @@ const orderSchema = new Schema<IOrder>(
     }
 );
 
-orderSchema.pre('validate', function (this: any) {
-    if (this.clientInfo && this.clientInfo.phone) {
-        this.clientInfo.phone = this.clientInfo.phone.replace(/\D/g, '');
-    }
-});
+export interface IOrderModel extends mongoose.Model<IOrder> {
+    getNextOrderNumber(): Promise<string>;
+}
 
-export const Order = mongoose.model<IOrder>('Order', orderSchema);
+orderSchema.statics.getNextOrderNumber = async function () {
+    const currentYear = new Date().getFullYear();
+    const prefix = `OPW-${currentYear}-`;
+
+    // Find the latest order for the current year
+    const lastOrder = await this.findOne({
+        orderNumber: new RegExp(`^${prefix}`)
+    }).sort({ orderNumber: -1 });
+
+    let nextNumber = 1;
+    if (lastOrder && lastOrder.orderNumber) {
+        const lastSequence = parseInt(lastOrder.orderNumber.split('-')[2]);
+        if (!isNaN(lastSequence)) {
+            nextNumber = lastSequence + 1;
+        }
+    }
+
+    // Return format: OPW-YYYY-XXX (e.g., OPW-2026-001)
+    return `${prefix}${nextNumber.toString().padStart(3, '0')}`;
+};
+
+export const Order = mongoose.model<IOrder, IOrderModel>('Order', orderSchema);

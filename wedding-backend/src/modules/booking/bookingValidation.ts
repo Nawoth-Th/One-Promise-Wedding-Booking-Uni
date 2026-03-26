@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createOrderSchema = z.object({
   body: z.object({
-    orderNumber: z.string().min(1, "Order number is required"),
+    orderNumber: z.string().optional(),
     clientInfo: z.object({
       title: z.string().optional(),
       name: z.string()
