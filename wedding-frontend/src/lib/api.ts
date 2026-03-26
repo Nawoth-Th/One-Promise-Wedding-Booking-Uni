@@ -9,6 +9,11 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch orders');
     return res.json();
   },
+  getLatestOrderNumber: async (): Promise<{ nextOrderNumber: string }> => {
+    const res = await fetch(`${API_BASE}/booking/latest-number`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch latest order number');
+    return res.json();
+  },
   getOrderById: async (id: string): Promise<Order> => {
     const res = await fetch(`${API_BASE}/booking/${id}`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch order');
