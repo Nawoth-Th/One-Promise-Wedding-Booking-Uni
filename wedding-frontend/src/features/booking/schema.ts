@@ -141,7 +141,7 @@ export const orderSchema = z.object({
     name: z.string().min(1, "Location name is required"),
     url: z.string()
       .url("Invalid URL")
-      .regex(/google\.com\/maps|goo\.gl\/maps/, "Must be a valid Google Maps link")
+      .regex(/google\.com\/maps|goo\.gl\/maps|maps\.google\.com/, "Must be a valid Google Maps link")
       .optional().or(z.literal("")),
     forEvent: z.string().optional(),
     mode: z.enum(["library", "manual"]).default("manual"),

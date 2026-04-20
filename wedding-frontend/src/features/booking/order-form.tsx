@@ -81,8 +81,22 @@ export default function OrderForm({ initialOrderNumber }: OrderFormProps) {
 
   /**
    * Selection Handling Logic
-   * Merges various sub-section data into a single payload for the backend.
+   * Merges various sub-section data into a single   * pay-load for the backend.
    */
+  const onInvalid = (errors: any) => {
+    console.error("Form Validation Errors:", errors)
+    
+    // Feature: Informative error summary toast
+    const errorCount = Object.keys(errors).length
+    if (errorCount > 0) {
+      toast({
+        title: "Missing Information",
+        description: "Please check the highlighted red fields. Some required details are missing.",
+        variant: "destructive"
+      })
+    }
+  }
+
   async function onSubmit(data: OrderFormValues) {
     setIsSubmitting(true)
     try {
@@ -117,7 +131,7 @@ export default function OrderForm({ initialOrderNumber }: OrderFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-20">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-20">
         <ClientInfoSection form={form} />
         
         <Separator />

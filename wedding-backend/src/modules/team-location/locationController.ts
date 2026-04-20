@@ -31,7 +31,14 @@ export const getLocations = async (req: Request, res: Response): Promise<void> =
 export const addLocation = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name, googleMapLink, province, district } = req.body;
-        const newLocation = new Location({ name, googleMapLink, province, district });
+        // Logic: Cleanse optional URL field. An empty string "" should be stored as undefined
+        // so that Mongoose's 'match' validator is correctly skipped.
+        const newLocation = new Location({ 
+            name, 
+            googleMapLink: googleMapLink || undefined, 
+            province, 
+            district 
+        });
         await newLocation.save();
         res.status(201).json(newLocation);
     } catch (error) {
@@ -52,7 +59,14 @@ export const deleteLocation = async (req: Request, res: Response): Promise<void>
 export const updateLocation = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const updatedLocation = await Location.findByIdAndUpdate(id, req.body, { new: true });
+        const updateData = { ...req.body };
+        
+        // Logic: Consistent sanitization for updates
+        if (updateData.googleMapLink === "") {
+            updateData.googleMapLink = undefined;
+        }
+
+        const updatedLocation = await Location.findByIdAndUpdate(id, updateData, { new: true });
         if (!updatedLocation) {
             res.status(404).json({ message: 'Location not found' });
             return;
