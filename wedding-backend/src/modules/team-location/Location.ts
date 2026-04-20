@@ -1,10 +1,25 @@
+/**
+ * @file Location.ts
+ * @description Data model for the Venue Library.
+ * Stores geographically categorized wedding venues in Sri Lanka to assist 
+ * users during the booking process.
+ * 
+ * Features:
+ * - Google Maps integration validation.
+ * - Geographic categorization (Province/District).
+ * - Optimized indexing for region-based searches.
+ */
+
 import mongoose, { Document, Schema } from 'mongoose';
 
+/**
+ * ILocation Interface
+ */
 export interface ILocation extends Document {
-    name: string;
-    googleMapLink?: string;
-    province: string;
-    district: string;
+    name: string;          // Name of the hotel, resort, or shoot location
+    googleMapLink?: string; // Verified maps URL
+    province: string;      // Regional categorization (e.g., "Western")
+    district: string;      // Specific district (e.g., "Colombo")
 }
 
 const locationSchema = new Schema<ILocation>(
@@ -22,7 +37,12 @@ const locationSchema = new Schema<ILocation>(
     }
 );
 
-// Optional: Add index for faster searching
+/**
+ * Performance Optimization: Composite Index
+ * Feature: Indexed Search.
+ * Ensures that filtering venues by province and district is extremely performant
+ * as the venue database grows.
+ */
 locationSchema.index({ province: 1, district: 1 });
 
 export const Location = mongoose.model<ILocation>('Location', locationSchema);
