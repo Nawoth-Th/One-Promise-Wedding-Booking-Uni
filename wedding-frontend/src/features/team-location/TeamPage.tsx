@@ -181,6 +181,7 @@ function TeamMemberDialog({ open, onOpenChange, member, onSave }: {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [active, setActive] = useState(true)
+  const [showErrors, setShowErrors] = useState(false)
 
   useEffect(() => {
     if (member) {
@@ -196,10 +197,16 @@ function TeamMemberDialog({ open, onOpenChange, member, onSave }: {
       setPhone("")
       setActive(true)
     }
-  }, [member])
+    setShowErrors(false)
+  }, [member, open])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!name || !role || !email || !phone) {
+        setShowErrors(true)
+        toast.error("Please fill in all required fields")
+        return
+    }
     onSave({ name, role, email, phone, active })
   }
 
@@ -214,13 +221,20 @@ function TeamMemberDialog({ open, onOpenChange, member, onSave }: {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Full name" required />
+            <Label htmlFor="name" className={cn(showErrors && !name && "text-destructive")}>Name</Label>
+            <Input 
+                id="name" 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                placeholder="Full name" 
+                className={cn(showErrors && !name && "border-destructive ring-destructive")}
+            />
+            {showErrors && !name && <p className="text-[10px] text-destructive font-medium">Name is required</p>}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="role">Role</Label>
-            <Select onValueChange={setRole} value={role} required>
-              <SelectTrigger id="role">
+            <Label htmlFor="role" className={cn(showErrors && !role && "text-destructive")}>Role</Label>
+            <Select onValueChange={setRole} value={role}>
+              <SelectTrigger id="role" className={cn(showErrors && !role && "border-destructive ring-destructive")}>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
@@ -241,14 +255,30 @@ function TeamMemberDialog({ open, onOpenChange, member, onSave }: {
                 <SelectItem value="Transport">Transport</SelectItem>
               </SelectContent>
             </Select>
+            {showErrors && !role && <p className="text-[10px] text-destructive font-medium">Role is required</p>}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" required />
+            <Label htmlFor="email" className={cn(showErrors && !email && "text-destructive")}>Email</Label>
+            <Input 
+                id="email" 
+                type="email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                placeholder="email@example.com" 
+                className={cn(showErrors && !email && "border-destructive ring-destructive")}
+            />
+            {showErrors && !email && <p className="text-[10px] text-destructive font-medium">Valid email is required</p>}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+94 77 XXX XXXX" required />
+            <Label htmlFor="phone" className={cn(showErrors && !phone && "text-destructive")}>Phone</Label>
+            <Input 
+                id="phone" 
+                value={phone} 
+                onChange={e => setPhone(e.target.value)} 
+                placeholder="+94 77 XXX XXXX" 
+                className={cn(showErrors && !phone && "border-destructive ring-destructive")}
+            />
+            {showErrors && !phone && <p className="text-[10px] text-destructive font-medium">Phone is required</p>}
           </div>
           <div className="flex items-center gap-2">
             <Switch id="active" checked={active} onCheckedChange={setActive} />

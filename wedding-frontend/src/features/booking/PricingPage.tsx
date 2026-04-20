@@ -29,6 +29,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useEffect } from "react"
+import { cn } from "@/lib/utils"
+import { toast } from "sonner" // Using sonner for simpler global access in dialogs if preferred, or useToast
 
 export default function PricingPage() {
   const [items, setItems] = useState<PricingItem[]>([])
@@ -264,6 +266,7 @@ function PricingItemDialog({ open, onOpenChange, item, onSave }: {
     const [category, setCategory] = useState("")
     const [details, setDetails] = useState("")
     const [saving, setSaving] = useState(false)
+    const [showErrors, setShowErrors] = useState(false)
 
     useEffect(() => {
         if (open) {
@@ -271,11 +274,19 @@ function PricingItemDialog({ open, onOpenChange, item, onSave }: {
             setPrice(item?.price?.toString() || "")
             setCategory(item?.category || "Wedding Packages")
             setDetails(item?.details?.join("\n") || "")
+            setShowErrors(false)
         }
     }, [open, item])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        
+        if (!name || !price || parseFloat(price) <= 0) {
+            setShowErrors(true)
+            toast.error("Please provide a valid name and price for the item.")
+            return
+        }
+
         setSaving(true)
         await onSave({
             name,
@@ -301,12 +312,31 @@ function PricingItemDialog({ open, onOpenChange, item, onSave }: {
                         <Input id="category" value={category} readOnly className="bg-muted text-muted-foreground focus-visible:ring-0" />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Bronze Package" />
+                        <Label htmlFor="name" className={cn(showErrors && !name && "text-destructive")}>Name</Label>
+                        <Input 
+                            id="name" 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            placeholder="e.g. Bronze Package" 
+                            className={cn(showErrors && !name && "border-destructive ring-destructive")}
+                        />
+                        {showErrors && !name && <p className="text-[10px] text-destructive font-medium">Item name is required</p>}
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="price">Price (LKR)</Label>
-                        <Input id="price" type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+                        <Label htmlFor="price" className={cn(showErrors && (!price || parseFloat(price) <= 0) && "text-destructive")}>Price (LKR)</Label>
+                        <Input 
+                            id="price" 
+                            type="number" 
+                            value={price} 
+                            onChange={e => setPrice(e.target.value)} 
+                            placeholder="0.00" 
+                            className={cn(showErrors && (!price || parseFloat(price) <= 0) && "border-destructive ring-destructive")}
+                        />
+                        {showErrors && (!price || parseFloat(price) <= 0) && (
+                            <p className="text-[10px] text-destructive font-medium">
+                                {!price ? "Price is required" : "Price must be greater than 0"}
+                            </p>
+                        )}
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="details">Details (One per line)</Label>

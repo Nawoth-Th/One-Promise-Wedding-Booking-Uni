@@ -17,10 +17,13 @@ export const teamMemberSchema = z.object({
 export const locationSchema = z.object({
   body: z.object({
     name: z.string().min(1, "Location name is required"),
-    googleMapLink: z.string()
-      .url("Invalid URL")
-      .regex(/google\.com\/maps|goo\.gl\/maps/, "Must be a valid Google Maps link")
-      .optional().or(z.literal("")),
+    // Feature: Robust Optional URL handling
+    // We allow an empty string OR a valid Google Maps URL.
+    googleMapLink: z.union([
+      z.string().url("Invalid URL").regex(/google\.com\/maps|goo\.gl\/maps|maps\.google\.com/, "Must be a valid Google Maps link"),
+      z.literal(""),
+      z.undefined()
+    ]).optional(),
     province: z.string().min(1, "Province is required"),
     district: z.string().min(1, "District is required"),
   }),

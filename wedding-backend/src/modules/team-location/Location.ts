@@ -27,7 +27,9 @@ const locationSchema = new Schema<ILocation>(
         name: { type: String, required: true },
         googleMapLink: { 
             type: String,
-            match: [/google\.com\/maps|goo\.gl\/maps/, "Must be a valid Google Maps link"]
+            // Logic: This field is optional. If provided, it must match the Google Maps format.
+            // If empty, the controller handles converting it to undefined to skip this check.
+            match: [/google\.com\/maps|goo\.gl\/maps|maps\.google\.com/, "Must be a valid Google Maps link"]
         },
         province: { type: String, required: true },
         district: { type: String, required: true },
