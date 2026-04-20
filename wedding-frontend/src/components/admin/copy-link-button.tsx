@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Link2, Check, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { ensurePortalToken } from "@/lib/mock-actions"
+import { ensurePortalToken } from "@/lib/order-actions"
 
 export function CopyLinkButton({ portalToken: initialToken, orderId }: { portalToken?: string, orderId?: string }) {
   const [copied, setCopied] = useState(false)

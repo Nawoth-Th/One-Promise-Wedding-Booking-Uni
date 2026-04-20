@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Order } from "@/lib/types"
 import { PROGRESS_STEPS } from "@/lib/progress-constants"
-import { updateOrderProgress } from "@/lib/mock-actions"
+import { updateOrderProgress } from "@/lib/order-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -26,7 +26,7 @@ export function ProgressTrackerAdmin({ orderId, portalToken, currentStep, lastUp
 
     const handleGenerateToken = async () => {
         setIsGenerating(true)
-        const { ensurePortalToken } = await import("@/lib/mock-actions")
+        const { ensurePortalToken } = await import("@/lib/order-actions")
         const result = await ensurePortalToken(orderId)
         if (result) {
             setGeneratedToken(result)

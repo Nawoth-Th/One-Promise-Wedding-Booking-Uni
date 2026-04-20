@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/command"
 import { Check, Plus, User, X, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { assignTeamMembers } from "@/lib/mock-actions"
+import { assignTeamMembers } from "@/lib/order-actions"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 

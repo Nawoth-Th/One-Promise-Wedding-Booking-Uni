@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { format } from "date-fns"
 import OrderDownloadButton from "@/features/agreement/order-download-button"
 import { useState } from "react"
-import { verifyPayment } from "@/lib/mock-actions"
+import { verifyPayment } from "@/lib/order-actions"
 import { toast } from "sonner"
 import { CheckCircle2, XCircle, Loader2, Eye } from "lucide-react"
 import { Badge } from "@/components/ui/badge"

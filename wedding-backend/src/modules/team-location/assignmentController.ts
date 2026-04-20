@@ -1,10 +1,26 @@
+/**
+ * @file assignmentController.ts
+ * @description Logic for managing staff assignments and availability.
+ * This is a critical module for operational scheduling, ensuring no team member
+ * is double-booked across different orders.
+ * 
+ * Features:
+ * - Real-time Availability Check: Queries all orders to find busy staff.
+ * - Assignment Overlap Validation: Prevents assigning a busy person to a new event.
+ * - Automated Staff Notification: Sends emails to newly assigned team members.
+ */
+
 import { Request, Response } from 'express';
 import { Order } from '../booking/Order';
 import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
 import { format } from 'date-fns';
 
-// @desc    Get busy team members for a specific date
+/**
+ * @desc    Get busy team members for a specific date.
+ * @route   GET /api/availability?date=YYYY-MM-DD
+ * @access  Internal (Used by Assignment Dashboard)
+ */
 export const getAvailability = async (req: Request, res: Response) => {
     try {
         const { date } = req.query;
@@ -16,6 +32,8 @@ export const getAvailability = async (req: Request, res: Response) => {
         const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
 
+        // Feature: Cross-Collection Querying
+        // Finds all orders where any event (Wedding, HC, etc.) lands on this date.
         const orders = await Order.find({
             $or: [
                 { 'wedding.date': { $gte: startOfDay, $lte: endOfDay } },
@@ -25,6 +43,7 @@ export const getAvailability = async (req: Request, res: Response) => {
             ]
         });
 
+        // Strategy: Unique Set Aggregation
         const busyMemberIds = new Set<string>();
         orders.forEach(order => {
             if (order.wedding?.date && isSameDay(order.wedding.date, targetDate)) {
@@ -128,6 +147,10 @@ export const updateAssignments = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Utility: Date Comparison
+ * Logic: Checks if two dates fallback on the same calendar day irrespective of time.
+ */
 const isSameDay = (d1: Date, d2: Date) => {
     return d1.getFullYear() === d2.getFullYear() &&
            d1.getMonth() === d2.getMonth() &&
