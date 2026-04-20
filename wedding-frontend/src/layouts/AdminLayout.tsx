@@ -25,6 +25,12 @@ export default function AdminLayout() {
                         Orders
                     </Link>
                     <Link
+                        to="/admin/reports"
+                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/10"
+                    >
+                        Reports
+                    </Link>
+                    <Link
                         to="/admin/agreements"
                         className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-primary/10"
                     >

@@ -11,6 +11,7 @@ export function MobileNav() {
 
   const links = [
     { href: "/admin", label: "Orders" },
+    { href: "/admin/reports", label: "Reports" },
     { href: "/admin/agreements", label: "Agreements" },
     { href: "/admin/pricing", label: "Pricing" },
     { href: "/admin/events", label: "Events" },

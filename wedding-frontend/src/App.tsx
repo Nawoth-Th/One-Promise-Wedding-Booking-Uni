@@ -21,6 +21,9 @@ import EventsPage from './features/events/EventsPage'
 import TeamPage from './features/team-location/TeamPage'
 import LocationPage from './features/team-location/LocationPage'
 
+// Component 05: Analytics
+import ReportsPage from './features/reports/ReportsPage'
+
 function App() {
   return (
     <Routes>
@@ -37,6 +40,7 @@ function App() {
         <Route path="pricing" element={<PricingPage />} />
         <Route path="team" element={<TeamPage />} />
         <Route path="locations" element={<LocationPage />} />
+        <Route path="reports" element={<ReportsPage />} />
       </Route>
 
 
