@@ -25,6 +25,7 @@ import { Form } from "@/components/ui/form"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { createOrder } from "@/lib/order-actions"
+import { api } from "@/lib/api"
 
 // Refactored Components & Logic
 import { orderSchema, OrderFormValues } from "./schema"
@@ -73,11 +74,10 @@ export default function OrderForm({ initialOrderNumber }: OrderFormProps) {
   const pricing = useOrderPricing(form)
 
   useEffect(() => {
-    fetch(`${API_URL}/locations`)
-      .then(res => res.json())
+    api.getLocations()
       .then(setLibraryLocations)
       .catch(err => console.error("Failed to fetch library locations:", err))
-  }, [API_URL])
+  }, [])
 
   /**
    * Selection Handling Logic

@@ -138,59 +138,23 @@ export function LocationManager({ form, libraryLocations }: LocationManagerProps
 
               {/* Feature: Library Selection Logic - Auto-populates URL and Region */}
               {form.watch(`locations.${index}.mode`) === "library" ? (
-                <FormField
-                  control={form.control}
-                  name={`locations.${index}.name`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <Select 
-                        onValueChange={(val) => {
-                          const loc = libraryLocations.find(l => l.name === val)
-                          if (loc) {
-                            field.onChange(loc.name)
-                            form.setValue(`locations.${index}.url`, loc.googleMapLink || "")
-                            form.setValue(`locations.${index}.province`, loc.province)
-                            form.setValue(`locations.${index}.district`, loc.district)
-                          }
-                        }} 
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select venue..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {libraryLocations.map(l => (
-                            <SelectItem key={l._id} value={l.name}>{l.name} ({l.district})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ) : (
                 <div className="space-y-3">
-                  <FormField
-                    control={form.control}
-                    name={`locations.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input placeholder="Venue Name..." className="h-8 text-sm" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <div className="grid grid-cols-2 gap-2">
                     <FormField
                       control={form.control}
                       name={`locations.${index}.province`}
                       render={({ field }) => (
                         <FormItem>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select 
+                            onValueChange={(val) => {
+                              field.onChange(val)
+                              // Feature: Dependent Dropdown - Reset district and name when province changes
+                              form.setValue(`locations.${index}.district`, "")
+                              form.setValue(`locations.${index}.name`, "")
+                              form.setValue(`locations.${index}.url`, "")
+                            }} 
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger className="h-8 text-[10px]">
                                 <SelectValue placeholder="Province" />
@@ -205,32 +169,109 @@ export function LocationManager({ form, libraryLocations }: LocationManagerProps
                       )}
                     />
                     <FormField
-                        control={form.control}
-                        name={`locations.${index}.district`}
-                        render={({ field }) => {
-                          // Feature: Dynamic Region Filter
-                          // Only shows districts belonging to the selected province.
-                          const provinceName = form.watch(`locations.${index}.province`)
-                          const province = SRI_LANKA_PROVINCES.find(p => p.name === provinceName)
-                          const districts = province ? province.districts : []
-                          return (
-                            <FormItem>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="h-8 text-[10px]">
-                                    <SelectValue placeholder="District" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )
-                        }}
-                      />
+                      control={form.control}
+                      name={`locations.${index}.district`}
+                      render={({ field }) => {
+                        const provinceName = form.watch(`locations.${index}.province`)
+                        const province = SRI_LANKA_PROVINCES.find(p => p.name === provinceName)
+                        const districts = province ? province.districts : []
+                        return (
+                          <FormItem>
+                            <Select 
+                              onValueChange={(val) => {
+                                field.onChange(val)
+                                // Feature: Dependent Dropdown - Reset name when district changes
+                                form.setValue(`locations.${index}.name`, "")
+                                form.setValue(`locations.${index}.url`, "")
+                              }} 
+                              value={field.value}
+                              disabled={!provinceName}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-8 text-[10px]">
+                                  <SelectValue placeholder="District" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )
+                      }}
+                    />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name={`locations.${index}.name`}
+                    render={({ field }) => {
+                      const province = form.watch(`locations.${index}.province`)
+                      const district = form.watch(`locations.${index}.district`)
+                      
+                      // Feature: Library Filter Logic
+                      // Only show venues that match the selected province and district.
+                      // Robustness: Using lowercase and trim to prevent mismatches due to formatting.
+                      const filteredLocations = libraryLocations.filter(loc => 
+                        (!province || loc.province.trim().toLowerCase() === province.trim().toLowerCase()) && 
+                        (!district || loc.district.trim().toLowerCase() === district.trim().toLowerCase())
+                      )
+
+                      return (
+                        <FormItem>
+                          <Select 
+                            onValueChange={(val) => {
+                              const loc = libraryLocations.find(l => l.name === val)
+                              if (loc) {
+                                field.onChange(loc.name)
+                                form.setValue(`locations.${index}.url`, loc.googleMapLink || "")
+                                // Feature: Data Integrity - Ensure province/district match the selected venue
+                                form.setValue(`locations.${index}.province`, loc.province)
+                                form.setValue(`locations.${index}.district`, loc.district)
+                              }
+                            }} 
+                            value={field.value}
+                            disabled={!district}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue placeholder="Select venue..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {filteredLocations.map(l => (
+                                <SelectItem key={l._id} value={l.name}>{l.name}</SelectItem>
+                              ))}
+                              {filteredLocations.length === 0 && (
+                                <div className="p-2 text-xs text-muted-foreground text-center">No venues found in this area</div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <FormField
+                    control={form.control}
+                    name={`locations.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input placeholder="Venue Name..." className="h-8 text-sm" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {/* Feature: Simplified Manual Entry
+                      Regional fields (Province/District) removed as per user requirement 
+                      to focus strictly on Venue and Map Link.
+                  */}
                 </div>
               )}
 
@@ -253,6 +294,7 @@ export function LocationManager({ form, libraryLocations }: LocationManagerProps
                   </FormItem>
                 )}
               />
+
             </div>
           </div>
         ))}
