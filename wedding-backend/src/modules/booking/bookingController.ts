@@ -1,3 +1,16 @@
+/**
+ * @file bookingController.ts
+ * @description Controller responsible for managing Orchestration of Order/Booking lifecycle.
+ * This file contains the primary 'Business Logic' layer for the booking system,
+ * including date clash detection, sequential ID assignment, and assignment notifications.
+ * 
+ * Features:
+ * - RESTful API handlers for Orders.
+ * - Calendar clash detection (preventing double bookings with manual events).
+ * - Automated token generation for client portals and tracking.
+ * - Shift assignment notification system via Email.
+ */
+
 import { Request, Response } from 'express';
 import { Order } from './Order';
 import { Event } from '../events/eventModel';
@@ -5,10 +18,14 @@ import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
 import { format } from 'date-fns';
 
-// @desc    Get latest (next) order number
-// @route   GET /api/booking/latest-number
+/**
+ * @desc    Get the next sequential order number based on the current year.
+ * @route   GET /api/booking/latest-number
+ * @access  Private/Admin
+ */
 export const getLatestOrderNumber = async (req: Request, res: Response) => {
     try {
+        // Strategy: Delegate ID generation logic to the Model Layer (Encapsulation)
         const nextOrderNumber = await (Order as any).getNextOrderNumber();
         res.json({ nextOrderNumber });
     } catch (error) {
@@ -16,8 +33,11 @@ export const getLatestOrderNumber = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Get all orders
-// @route   GET /api/orders
+/**
+ * @desc    Retrieve all orders sorted by creation date.
+ * @route   GET /api/orders
+ * @access  Private/Admin
+ */
 export const getOrders = async (req: Request, res: Response) => {
     try {
         const orders = await Order.find({}).sort({ createdAt: -1 });
@@ -64,13 +84,17 @@ export const getOrderByToken = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Create new order
+/**
+ * @desc    Create a new order from a public or admin form.
+ * @route   POST /api/orders
+ * @access  Public/Admin
+ */
 export const createOrder = async (req: Request, res: Response) => {
     try {
-        if (req.body.clientInfo && req.body.clientInfo.phone) {
-            req.body.clientInfo.phone = req.body.clientInfo.phone.replace(/\D/g, '');
-        }
         const { wedding, homecoming, engagement, preShoot } = req.body;
+        
+        // Feature: Date Conflict Validation
+        // Collect all dates from the request to check for existing blocks in the calendar.
         const datesToCheck = [
             wedding?.date,
             homecoming?.date,
@@ -85,6 +109,7 @@ export const createOrder = async (req: Request, res: Response) => {
             const endOfDay = new Date(eventDate);
             endOfDay.setHours(23, 59, 59, 999);
 
+            // Strategy: Cross-Module Query - Checking the 'Events' module for blocked dates
             const manualEvent = await Event.findOne({
                 date: { $gte: startOfDay, $lte: endOfDay }
             });
@@ -96,6 +121,7 @@ export const createOrder = async (req: Request, res: Response) => {
             }
         }
 
+        // Logic: Generate tracking, agreement, and portal tokens for secure external access
         const orderNumber = req.body.orderNumber || await (Order as any).getNextOrderNumber();
 
         const order = new Order({
@@ -174,9 +200,6 @@ export const updateOrder = async (req: Request, res: Response) => {
 
             // Handle nested objects safely
             if (req.body.clientInfo) {
-                if (req.body.clientInfo.phone) {
-                    req.body.clientInfo.phone = req.body.clientInfo.phone.replace(/\D/g, '');
-                }
                 Object.assign(order.clientInfo, req.body.clientInfo);
             }
             if (req.body.eventDetails) Object.assign(order.eventDetails, req.body.eventDetails);

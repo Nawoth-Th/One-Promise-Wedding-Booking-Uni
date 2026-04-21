@@ -67,6 +67,11 @@ export function ClientAgreementForm({ order, packageDetails, onSwitchToPayment }
     },
   })
 
+  const onInvalid = (errors: any) => {
+    console.error("Validation failed:", errors)
+    toast.error("Please fill in all required fields marked with *")
+  }
+
   async function onSubmit(values: z.infer<typeof agreementSchema>) {
     setIsSubmitting(true)
     try {
@@ -320,7 +325,7 @@ export function ClientAgreementForm({ order, packageDetails, onSwitchToPayment }
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  {/* Order No - Read Only */}

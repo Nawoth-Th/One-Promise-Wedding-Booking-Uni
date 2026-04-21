@@ -126,3 +126,35 @@ export interface Order {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface StatsSummary {
+  summary: {
+    totalRevenue: number;
+    totalBalance: number;
+    averageOrderValue: number;
+    count: number;
+  };
+  revenueByMonth: {
+    _id: { month: number; year: number };
+    revenue: number;
+    count: number;
+  }[];
+  packageDistribution: {
+    _id: string;
+    count: number;
+  }[];
+  eventTypes: {
+    wedding: number;
+    homecoming: number;
+    engagement: number;
+    preShoot: number;
+  };
+  teamUtilization: {
+    _id: string;
+    eventCount: number;
+  }[];
+  topVenues: {
+    _id: string;
+    count: number;
+  }[];
+}

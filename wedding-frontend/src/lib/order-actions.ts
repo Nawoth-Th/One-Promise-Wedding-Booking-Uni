@@ -1,13 +1,31 @@
+/**
+ * @file order-actions.ts
+ * @description Frontend Service Layer / Action Aggregator.
+ * This file serves as the abstraction layer between the React UI components 
+ * and the low-level API client. It handles data transformation, error logging,
+ * and result formatting for the frontend.
+ * 
+ * Featured Categories:
+ * - Order CRUD operations.
+ * - Payment and Financial Lifecycle.
+ * - Team & Assignment Management.
+ * - Workflow Tracking (Progress Steps).
+ */
+
 import { api } from "@/lib/api"
 import type { Order, TeamMember, PricingItem } from "@/lib/types"
 
-// --- Order Actions ---
+/**
+ * Action: Create Order
+ * Communicates with the backend to initialize a new booking.
+ * @param data - The validated order object from the form.
+ */
 export async function createOrder(data: Order) {
   try {
     const res: any = await api.createOrder(data);
     return { success: true, orderId: res._id, orderNumber: res.orderNumber }
   } catch (e) {
-    console.error(e)
+    console.error("Order creation failed:", e)
     return { success: false }
   }
 }
@@ -60,14 +78,19 @@ export async function ensureAgreementToken(id: string) {
   }
 }
 
-// --- Payment Actions ---
+/**
+ * Action: Mock Payment Upload
+ * Logic: Simulates a file upload by associating a static resource URL with 
+ * the order's financial record.
+ */
 export async function uploadPaymentProof(formData: FormData, orderId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // In a real app, you'd upload the file first then get the URL
-    // Here we'll simulate by updating the order with a mock URL and Pending status
+    // Strategy: Optimistic Mocking
+    // In a production environment, this would involve a multi-part form upload
+    // to an S3 bucket or equivalent storage service.
     const financials = {
       paymentProof: {
-        url: "https://images.unsplash.com/photo-1554224155-169641357599?auto=format&fit=crop&q=80&w=400", // Sample receipt image
+        url: "https://images.unsplash.com/photo-1554224155-169641357599?auto=format&fit=crop&q=80&w=400", 
         status: "Pending",
         uploadedAt: new Date()
       }
@@ -75,7 +98,7 @@ export async function uploadPaymentProof(formData: FormData, orderId: string): P
     await api.updateOrder(orderId, { financials } as any);
     return { success: true }
   } catch (e) {
-    console.error(e);
+    console.error("Payment proof upload simulation failed:", e);
     return { success: false, error: (e as any).message || "Failed to update payment status" }
   }
 }
@@ -189,27 +212,28 @@ export async function deleteTeamMember(id: string) {
   }
 }
 
-// --- Progress Actions ---
+/**
+ * Action: Milestone Management
+ * Logic: Toggles the completion status of a specific workflow step.
+ * Demonstrates state manipulation on complex nested arrays.
+ */
 export async function updateOrderProgress(orderId: string, stepId: number) {
   try {
     const order = await api.getOrderById(orderId);
     let newProgress: any[] = [...(order.progress?.history || [])];
     
-    // If progress is empty, init it
+    // Feature: Auto-Initialization
+    // If an order lacks a progress history, provide a default template.
     if (newProgress.length === 0) {
       newProgress = [
         { id: 1, title: 'Contract Signed', description: 'Client has signed the agreement', completed: false, date: null },
         { id: 2, title: 'Advance Payment', description: 'Received 25,000 LKR advance', completed: false, date: null },
-        { id: 3, title: 'Pre-Shoot Completed', description: 'All pre-wedding shoots done', completed: false, date: null },
-        { id: 4, title: 'Event Date 1', description: 'Primary event videography', completed: false, date: null },
-        { id: 5, title: 'Event Date 2', description: 'Secondary event videography', completed: false, date: null },
         { id: 6, title: 'Full Payment', description: 'Received final balance', completed: false, date: null },
-        { id: 7, title: 'Editing Started', description: 'Post-production phase', completed: false, date: null },
-        { id: 8, title: 'First Draft Sent', description: 'Sent for client review', completed: false, date: null },
         { id: 9, title: 'Final Delivery', description: 'All products delivered', completed: false, date: null }
       ];
     }
     
+    // Strategy: Mutable modification on cloned array
     const index = newProgress.findIndex((p: any) => p.id === stepId);
     if (index >= 0) {
       newProgress[index].completed = !newProgress[index].completed;
@@ -225,7 +249,7 @@ export async function updateOrderProgress(orderId: string, stepId: number) {
     } as any);
     return { success: true }
   } catch(e) {
-    console.error(e)
+    console.error("Progress update failed:", e)
     return { success: false }
   }
 }

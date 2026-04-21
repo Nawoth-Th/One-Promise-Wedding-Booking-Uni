@@ -1,9 +1,17 @@
+/**
+ * @file teamController.ts
+ * @description Controller for managing the professional team (Photographers, Cinematographers, etc.).
+ * Handles registration, profile updates, and active status toggling for staff.
+ */
+
 import { Request, Response } from 'express';
 import { TeamMember } from './TeamMember';
 
-// @desc    Get all team members
-// @route   GET /api/team
-// @access  Public
+/**
+ * @desc    Fetch all Professional Team Members.
+ * @route   GET /api/team
+ * @access  Public/Admin
+ */
 export const getTeamMembers = async (req: Request, res: Response) => {
     try {
         const members = await TeamMember.find({});
@@ -13,11 +21,14 @@ export const getTeamMembers = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Create a team member
-// @route   POST /api/team
-// @access  Private
+/**
+ * @desc    Register a new Team Member with validated data.
+ * @route   POST /api/team
+ * @access  Private/Admin
+ */
 export const createTeamMember = async (req: Request, res: Response) => {
     try {
+        // Logic: Consistent phone sanitization at the controller level (Layered Security)
         if (req.body.phone) {
             req.body.phone = req.body.phone.replace(/\D/g, '');
         }

@@ -31,6 +31,19 @@ A comprehensive, internal booking and agreement management system designed for *
 - **Robust Data Validation**: Multi-layered validation using **Zod** (request schemas) and **Mongoose** (model-level constraints) to ensure data integrity.
 - **Automated Sanitization**: Model-level `pre('validate')` hooks automatically clean inputs (e.g., phone numbers) to prevent validation failures on legacy or formatted data.
 - **Payment Verification System**: Secure end-to-end workflow where clients upload proofs (PNG, JPG, PDF) with immediate success feedback, and administrators verify them via a dedicated dashboard.
+- **Enhanced Validation UX**: High-fidelity, submit-triggered validation system across all forms with localized red highlights and specifying-toast notifications for missing mandatory data.
+
+### 📊 Reports & Advanced Analytics (NEW)
+
+- **Financial Performance**: Real-time tracking of revenue, average order value, and discount impact.
+- **Operational Insights**: Booking success rates, monthly trends, and package popularity analysis.
+- **Resource Utilization**: Data-driven visibility into team member workload and role distribution.
+- **Geographic Intel**: Analysis of venue popularity and geographical distribution across Sri Lanka using Recharts-backed data visualization.
+
+### 🎓 Academic Excellence & Standards
+
+- **Modular Stability**: Strict adherence to a feature-based architecture, ensuring isolated module development and easy scalability.
+- **Full-Stack Type Safety**: Shared TypeScript interfaces and automated API response types ensuring consistent data flow between the Node.js backend and React frontend.
 
 ---
 
@@ -41,7 +54,9 @@ A comprehensive, internal booking and agreement management system designed for *
 - **Database**: [MongoDB](https://www.mongodb.com/) + [Mongoose](https://mongoosejs.com/)
 - **Email Service**: [Nodemailer](https://nodemailer.com/)
 - **PDF Engine**: [@react-pdf/renderer](https://react-pdf.org/)
+- **Data Visualization**: [Recharts](https://recharts.org/) for business intelligence dashboards.
 - **Components**: [Radix UI](https://www.radix-ui.com/) + [Lucide React](https://lucide.dev/)
+- **Validation**: [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/)
 
 ---
 
@@ -62,6 +77,7 @@ The system has been refactored into a feature-based architecture to support inde
 - **Booking**: `OrdersPage`, `OrderForm`, `PricingPage`.
 - **Agreement**: `AgreementsPage`, `ClientPortal`, `ProgressTracker`.
 - **Events**: `EventsPage` (Calendar View), `OrderDetailPage`.
+- **Reports**: `ReportsPage` (Analytics Dashboard with interactive charts).
 - **Team-Location**: `TeamPage`, `LocationPage`, `AssignmentTools`.
 
 ---

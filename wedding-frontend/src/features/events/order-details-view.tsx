@@ -9,7 +9,7 @@ import {
   getPricingItems, 
   deleteOrder, 
   getActiveTeamMembers 
-} from "@/lib/mock-actions"
+} from "@/lib/order-actions"
 import { TeamAssignment } from "@/features/team-location/team-assignment"
 import { ProgressTrackerAdmin } from "@/features/agreement/progress-tracker-admin"
 import { LocationPicker } from "@/features/team-location/location-picker"

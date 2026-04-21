@@ -1,4 +1,4 @@
-import type { Order, TeamMember, PricingItem } from "./types";
+import type { Order, TeamMember, PricingItem, StatsSummary } from "./types";
 
 const API_BASE = '/api';
 
@@ -210,5 +210,16 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) throw new Error('Failed to delete manual event');
+  },
+  
+  // Reports & Analytics (Member 1)
+  /**
+   * Feature: Business Intelligence
+   * Fetches aggregated statistics from the backend for the dashboard.
+   */
+  getStatsSummary: async (): Promise<StatsSummary> => {
+    const res = await fetch(`${API_BASE}/booking/stats/summary`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch stats summary');
+    return res.json();
   }
 };
