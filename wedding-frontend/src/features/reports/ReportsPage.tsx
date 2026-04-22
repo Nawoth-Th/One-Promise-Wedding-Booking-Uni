@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import type { StatsSummary } from '@/lib/types';
+import type { StatsSummary, Order } from '@/lib/types';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, PieChart, Pie, Cell, Legend 
@@ -20,9 +20,25 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   DollarSign, Calendar, Users, MapPin, TrendingUp, CreditCard, 
-  Clock, ArrowRight, Megaphone, Heart
+  Clock, ArrowRight, Megaphone, Heart, Check, Search, Wallet
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4444', '#00bcd4'];
 
@@ -32,20 +48,27 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4444'
  */
 export default function ReportsPage() {
   const [stats, setStats] = useState<StatsSummary | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const data = await api.getStatsSummary();
-        setStats(data);
+        const [statsData, ordersData] = await Promise.all([
+          api.getStatsSummary(),
+          api.getOrders()
+        ]);
+        setStats(statsData);
+        setOrders(ordersData);
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchData();
   }, []);
 
   if (loading) return <div className="flex items-center justify-center h-96">Loading Reports...</div>;
@@ -156,6 +179,118 @@ export default function ReportsPage() {
             </CardContent>
         </Card>
       </div>
+
+      {/* Feature: Order Balance Lookup */}
+      <Card className="border-primary/20 shadow-sm overflow-hidden bg-gradient-to-br from-background to-muted/20">
+        <CardHeader className="bg-muted/30 pb-4">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-5 h-5 text-primary" />
+            <CardTitle>Order Balance Lookup</CardTitle>
+          </div>
+          <CardDescription>Select an order to view its financial breakdown and remaining balance.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row gap-8 items-start">
+            <div className="w-full md:w-80 space-y-4">
+              <label className="text-sm font-medium">Search Order (Number or Name)</label>
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between h-10 text-xs"
+                  >
+                    {selectedOrder
+                      ? `${selectedOrder.orderNumber} - ${selectedOrder.clientInfo.name}`
+                      : "Search orders..."}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Type order number or name..." className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>No order found.</CommandEmpty>
+                      <CommandGroup>
+                        <div className="max-h-64 overflow-y-auto">
+                          {orders.map((order) => (
+                            <CommandItem
+                              key={order._id}
+                              value={`${order.orderNumber} ${order.clientInfo.name}`}
+                              onSelect={() => {
+                                setSelectedOrder(order);
+                                setOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedOrder?._id === order._id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium">{order.orderNumber}</span>
+                                <span className="text-[10px] text-muted-foreground">{order.clientInfo.name}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </div>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {selectedOrder && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-xs text-muted-foreground"
+                  onClick={() => setSelectedOrder(null)}
+                >
+                  Clear Selection
+                </Button>
+              )}
+            </div>
+
+            <div className="flex-1 w-full">
+              {selectedOrder ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 animate-in slide-in-from-right-4 duration-300">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Amount</p>
+                    <p className="text-2xl font-bold">LKR {selectedOrder.financials.totalAmount.toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid Amount</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      LKR {(selectedOrder.financials.totalAmount - (selectedOrder.financials.balance || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-1 shadow-inner group">
+                    <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Remaining Balance</p>
+                    <p className="text-3xl font-black text-amber-700 transition-transform group-hover:scale-105 origin-left">
+                      LKR {(selectedOrder.financials.balance || 0).toLocaleString()}
+                    </p>
+                    <div className="pt-2">
+                       <Badge variant={(selectedOrder.financials.balance || 0) === 0 ? "default" : "outline"} className="text-[10px]">
+                          {(selectedOrder.financials.balance || 0) === 0 ? "FULLY PAID" : "PAYMENT PENDING"}
+                       </Badge>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-muted rounded-xl bg-muted/5">
+                   <div className="bg-muted p-3 rounded-full mb-3">
+                      <Wallet className="w-6 h-6 text-muted-foreground/50" />
+                   </div>
+                   <p className="text-sm text-muted-foreground font-medium">Select an order from the list to see financial details</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* 2. Revenue Trends */}
