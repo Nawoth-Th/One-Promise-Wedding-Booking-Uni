@@ -65,6 +65,15 @@ export default function EventsPage() {
 
   const handleAddEvent = async () => {
     if (!selectedDate || !newEvent.title) return
+
+    // Logic: Safeguard against past event creation
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalized to day start
+    if (selectedDate < today) {
+        toast.error("Cannot schedule events in the past.");
+        return;
+    }
+
     setIsSubmitting(true)
     try {
       await api.createManualEvent({
@@ -108,8 +117,11 @@ export default function EventsPage() {
   }
 
   const modifiersStyles = {
-    order: { borderBottom: '2px solid hsl(var(--primary))' },
-    manual: { borderBottom: '2px solid #f97316' },
+    order: { 
+      borderBottom: '3px solid #2563eb', // More pronounced blue for orders
+      fontWeight: '600'
+    },
+    manual: { borderBottom: '3px solid #f97316' }, // Matching thickness with manual blocks
   }
 
   return (
@@ -226,6 +238,7 @@ export default function EventsPage() {
                 className="rounded-xl border shadow-inner p-4 scale-110 md:scale-125 my-8 h-auto"
                 modifiers={modifiers}
                 modifiersStyles={modifiersStyles}
+                disabled={{ before: new Date() }}
               />
           </CardContent>
           <div className="p-4 border-t bg-muted/20 flex flex-wrap gap-4 justify-center text-sm">

@@ -151,9 +151,20 @@ export interface StatsSummary {
   };
   teamUtilization: {
     _id: string;
+    name: string;
     eventCount: number;
   }[];
   topVenues: {
+    _id: string;
+    count: number;
+  }[];
+  nextEvent?: {
+    orderNumber: string;
+    date: Date;
+    clientName: string;
+    type: string;
+  };
+  referralSources: {
     _id: string;
     count: number;
   }[];

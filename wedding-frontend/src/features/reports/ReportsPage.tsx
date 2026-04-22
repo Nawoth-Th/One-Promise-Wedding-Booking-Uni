@@ -18,9 +18,13 @@ import {
   LineChart, Line, PieChart, Pie, Cell, Legend 
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Calendar, Users, MapPin, TrendingUp, CreditCard } from 'lucide-react';
+import { 
+  DollarSign, Calendar, Users, MapPin, TrendingUp, CreditCard, 
+  Clock, ArrowRight, Megaphone, Heart
+} from 'lucide-react';
+import { format } from 'date-fns';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ff4444', '#00bcd4'];
 
 /**
  * Component: ReportsPage
@@ -31,10 +35,6 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    /**
-     * Logic: Initial Data Load
-     * Feature: Centralized metric fetching from the BI backend.
-     */
     const fetchStats = async () => {
       try {
         const data = await api.getStatsSummary();
@@ -51,11 +51,20 @@ export default function ReportsPage() {
   if (loading) return <div className="flex items-center justify-center h-96">Loading Reports...</div>;
   if (!stats) return <div className="p-8 text-center">Failed to load system reports.</div>;
 
-  const revenueData = stats.revenueByMonth.map(m => ({
-    name: `${m._id.month}/${m._id.year}`,
-    revenue: m.revenue,
-    count: m.count
-  }));
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentYear = new Date().getFullYear();
+  const revenueData = MONTHS.map((monthName, idx) => {
+    const monthNum = idx + 1;
+    const existingMonth = stats.revenueByMonth.find(m => 
+      m._id.month === monthNum && m._id.year === currentYear
+    );
+    
+    return {
+      name: monthName,
+      revenue: existingMonth ? existingMonth.revenue : 0,
+      count: existingMonth ? existingMonth.count : 0
+    };
+  });
 
   const packageData = stats.packageDistribution.map(p => ({
     name: p._id,
@@ -69,11 +78,39 @@ export default function ReportsPage() {
     { name: 'Pre-Shoot', value: stats.eventTypes.preShoot }
   ];
 
+  const referralData = stats.referralSources.map(r => ({
+    name: r._id,
+    value: r.count
+  }));
+
   return (
     <div className="p-6 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Business Intelligence Dashboard</h1>
-        <p className="text-muted-foreground">Strategic overview of One Promise Wedding performance and metrics.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Business Intelligence Dashboard</h1>
+            <p className="text-muted-foreground">Strategic overview of One Promise Wedding performance and metrics.</p>
+        </div>
+        
+        {/* Feature: Next Event Spotlight */}
+        {stats.nextEvent && (
+            <Card className="border-primary/20 bg-primary/5 min-w-[300px]">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="bg-primary/10 p-3 rounded-full">
+                        <Clock className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-primary/70">Next Upcoming Event</p>
+                        <h3 className="font-bold text-lg leading-tight">{stats.nextEvent.clientName}</h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <span className="font-medium text-foreground">{format(new Date(stats.nextEvent.date), 'MMM d, yyyy')}</span>
+                            <span>•</span>
+                            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">{stats.nextEvent.type}</span>
+                        </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground/30" />
+                </CardContent>
+            </Card>
+        )}
       </div>
 
       {/* 1. Financial Performance Cards */}
@@ -100,7 +137,7 @@ export default function ReportsPage() {
         </Card>
         <Card className="bg-blue-500/5 border-blue-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
@@ -212,7 +249,7 @@ export default function ReportsPage() {
             <div className="space-y-4">
                {stats.teamUtilization.length > 0 ? stats.teamUtilization.map((member, idx) => (
                  <div key={member._id} className="flex items-center justify-between">
-                    <span className="text-sm font-medium truncate max-w-[150px]">{member._id}</span>
+                    <span className="text-sm font-medium truncate max-w-[150px]">{member.name || member._id}</span>
                     <div className="flex items-center gap-2">
                         <div className="bg-secondary px-2 py-0.5 rounded text-xs font-semibold">
                             {member.eventCount} Events
@@ -244,6 +281,62 @@ export default function ReportsPage() {
             </CardContent>
         </Card>
       </div>
+
+      {/* 7. Marketing Insights Section */}
+      <Card>
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-primary" />
+                  How did you find US? (Referral Sources)
+              </CardTitle>
+              <CardDescription>Analysis of lead generation and marketing channel effectiveness.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+                  <div className="lg:col-span-1 h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                              <Pie
+                                data={referralData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                              >
+                                {referralData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                          </PieChart>
+                      </ResponsiveContainer>
+                  </div>
+                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {referralData.map((channel, idx) => (
+                          <div key={channel.name} className="flex items-center gap-4 bg-muted/30 p-4 rounded-xl border">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-background shadow-sm">
+                                  <Heart className="w-5 h-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                  <span className="text-sm font-semibold">{channel.name}</span>
+                                  <div className="flex items-baseline gap-2">
+                                      <span className="text-2xl font-bold">{channel.value}</span>
+                                      <span className="text-xs text-muted-foreground">referrals</span>
+                                  </div>
+                              </div>
+                          </div>
+                      ))}
+                      {referralData.length === 0 && (
+                          <p className="text-sm text-muted-foreground italic col-span-2 text-center py-8">
+                              No referral data collected from agreements yet.
+                          </p>
+                      )}
+                  </div>
+              </div>
+          </CardContent>
+      </Card>
     </div>
   );
 }
