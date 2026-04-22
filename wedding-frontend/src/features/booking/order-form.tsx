@@ -101,13 +101,16 @@ export default function OrderForm({ initialOrderNumber }: OrderFormProps) {
     setIsSubmitting(true)
     try {
       // Transformation: Aligning form structure with Backend Model expectation
+      // We extract locations and notes into the eventDetails object as required by the schema.
+      const { locations, notes, ...otherData } = data;
+      
       const orderData: any = {
-        ...data,
+        ...otherData,
         eventDetails: {
             // Logic: Fallback mechanism for selecting the 'main' event date
             mainDate: data.wedding?.date || data.homecoming?.date || data.engagement?.date || new Date(),
-            locations: data.locations,
-            notes: data.notes
+            locations: locations,
+            notes: notes
         },
         status: "Pending"
       }
@@ -115,11 +118,17 @@ export default function OrderForm({ initialOrderNumber }: OrderFormProps) {
       const res = await createOrder(orderData)
       
       if (res.success) {
-        // UI Feedback: Informing the user of success via Toast notification
-        toast({ title: "Order created successfully", description: `Order ID: ${res.orderId}` })
+        toast({
+          title: "Order Created",
+          description: `Order ${res.orderNumber} has been successfully created.`
+        })
         navigate(`/admin/orders/${res.orderId}`)
       } else {
-        toast({ title: "Failed to create order", variant: "destructive" })
+        toast({ 
+            title: "Failed to create order", 
+            description: res.error || "An unexpected error occurred. Please try again.",
+            variant: "destructive" 
+        })
       }
     } catch (error) {
       console.error(error)

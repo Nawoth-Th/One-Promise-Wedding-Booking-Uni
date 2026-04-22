@@ -51,7 +51,7 @@ export default function LocationPage() {
       return
     }
 
-    if (newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com/.test(newLink)) {
+    if (newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/.test(newLink)) {
       toast.error("Invalid Google Maps link. Please enter a valid URL.")
       return
     }
@@ -151,9 +151,9 @@ export default function LocationPage() {
                 placeholder="https://maps.google.com/..."
                 value={newLink}
                 onChange={(e) => setNewLink(e.target.value)}
-                className={newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com/.test(newLink) ? "border-destructive" : ""}
+                className={newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/.test(newLink) ? "border-destructive" : ""}
               />
-              {newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com/.test(newLink) && (
+              {newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/.test(newLink) && (
                 <p className="text-[10px] text-destructive font-medium">Must be a valid Google Maps link</p>
               )}
             </div>

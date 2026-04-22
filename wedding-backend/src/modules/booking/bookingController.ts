@@ -75,6 +75,11 @@ export const getOrderByToken = async (req: Request, res: Response) => {
 
         const order = await Order.findOne(query);
         if (order) {
+            // Feature: Auto-tracking - Update status to 'Sent' when link is accessed
+            if (tokenType === 'agreement' && order.agreementStatus === 'Not Sent') {
+                order.agreementStatus = 'Sent';
+                await order.save();
+            }
             res.json(order);
         } else {
             res.status(404).json({ message: 'Order not found' });

@@ -24,9 +24,9 @@ export async function createOrder(data: Order) {
   try {
     const res: any = await api.createOrder(data);
     return { success: true, orderId: res._id, orderNumber: res.orderNumber }
-  } catch (e) {
+  } catch (e: any) {
     console.error("Order creation failed:", e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -78,28 +78,27 @@ export async function ensureAgreementToken(id: string) {
   }
 }
 
-/**
- * Action: Mock Payment Upload
- * Logic: Simulates a file upload by associating a static resource URL with 
- * the order's financial record.
- */
 export async function uploadPaymentProof(formData: FormData, orderId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Strategy: Optimistic Mocking
-    // In a production environment, this would involve a multi-part form upload
-    // to an S3 bucket or equivalent storage service.
-    const financials = {
-      paymentProof: {
-        url: "https://images.unsplash.com/photo-1554224155-169641357599?auto=format&fit=crop&q=80&w=400", 
-        status: "Pending",
-        uploadedAt: new Date()
-      }
-    };
-    await api.updateOrder(orderId, { financials } as any);
+    // Strategy: Real File Upload via FormData
+    console.log('--- Frontend Upload Start ---');
+    console.log('OrderId:', orderId);
+    console.log('Has File:', formData.get('file') instanceof File);
+
+    const res = await fetch(`/api/agreement/upload-proof/${orderId}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Upload failed");
+    }
+
     return { success: true }
-  } catch (e) {
-    console.error("Payment proof upload simulation failed:", e);
-    return { success: false, error: (e as any).message || "Failed to update payment status" }
+  } catch (e: any) {
+    console.error("Payment proof upload failed:", e);
+    return { success: false, error: e.message || "Failed to upload payment proof" }
   }
 }
 

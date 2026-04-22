@@ -31,7 +31,10 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create order');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to create order');
+    }
     return res.json();
   },
   updateOrder: async (id: string, data: Partial<Order>): Promise<Order> => {

@@ -47,18 +47,45 @@ export function PaymentUpload({ order }: PaymentUploadProps) {
     }
   }
 
+  const isAgreementSigned = ["Signed", "Reviewing", "Completed"].includes(order.agreementStatus || "")
+  const canUpload = isAgreementSigned && !isUploading
+
   return (
     <div className="max-w-xl mx-auto py-8 px-4">
-      <Card>
+      <Card className={!isAgreementSigned ? "opacity-60 grayscale-[0.5]" : ""}>
         <CardHeader>
-          <CardTitle>Advance Payment Proof</CardTitle>
-          <CardDescription>
-            Please transfer the advance payment to the bank account details sent to your email and upload the proof here.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Advance Payment Proof</CardTitle>
+                <CardDescription>
+                    Please transfer the advance payment to the bank account details sent to your email and upload the proof here.
+                </CardDescription>
+              </div>
+              {!isAgreementSigned && (
+                  <div className="bg-amber-100 text-amber-700 p-2 rounded-full h-fit" title="Agreement Signature Required">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+              )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           
-          {hasProof ? (
+          {!isAgreementSigned ? (
+              <div className="bg-muted p-6 rounded-lg border border-dashed flex flex-col items-center text-center gap-3">
+                  <div className="bg-background p-3 rounded-full border shadow-sm">
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                      <h4 className="font-semibold text-sm">Upload Locked</h4>
+                      <p className="text-xs text-muted-foreground mt-1 px-4">
+                          You must review and sign the digital agreement in the <strong>Agreement</strong> tab before you can upload the payment proof.
+                      </p>
+                  </div>
+                  <Button variant="outline" size="sm" className="mt-2" disabled>
+                      Waiting for Signature
+                  </Button>
+              </div>
+          ) : hasProof ? (
              <div className="space-y-4">
                 <div className={`p-4 rounded-lg flex items-center gap-3 border ${
                     status === 'Verified' ? 'bg-green-500/10 border-green-500/20 text-green-700' :
@@ -89,7 +116,7 @@ export function PaymentUpload({ order }: PaymentUploadProps) {
                                 <Label htmlFor="proof" className={showErrors ? "text-destructive" : ""}>Upload Receipt (Image) *</Label>
                                 <Input id="proof" name="file" type="file" accept="image/*" className={showErrors ? "border-destructive ring-destructive" : ""} />
                             </div>
-                            <Button disabled={isUploading}>
+                            <Button disabled={!canUpload}>
                                 {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Upload New Proof
                             </Button>
@@ -103,7 +130,7 @@ export function PaymentUpload({ order }: PaymentUploadProps) {
                     <Label htmlFor="proof" className={showErrors ? "text-destructive" : ""}>Upload Receipt (Image) *</Label>
                     <Input id="proof" name="file" type="file" accept="image/*" className={showErrors ? "border-destructive ring-destructive" : ""} />
                 </div>
-                <Button className="w-full" disabled={isUploading}>
+                <Button className="w-full" disabled={!canUpload}>
                     {isUploading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...
