@@ -567,6 +567,7 @@ export function ClientAgreementForm({ order, packageDetails, onSwitchToPayment }
                       <FormDescription>
                         By checking this box, you confirm that all details provided are accurate and you agree to One Promise (Pvt) Ltd's terms of service.
                       </FormDescription>
+                      <FormMessage />
                     </div>
                   </FormItem>
                 )}

@@ -63,6 +63,18 @@ export const sendEmail = async (options: EmailOptions) => {
 
     // 3. Send the email
     try {
+        /**
+         * Feature: Demonstration Logs
+         * Logic: Always log outgoing emails to the terminal for visibility during evaluation.
+         */
+        console.log('\n========= 📧 OUTGOING EMAIL LOGS =========');
+        console.log(`TIME: ${new Date().toLocaleTimeString()}`);
+        console.log(`TO: ${options.email}`);
+        console.log(`SUBJECT: ${options.subject}`);
+        if (options.html) console.log(`HTML: [HTML Content Included]`);
+        console.log(`MESSAGE BLURB: ${options.message.substring(0, 100)}${options.message.length > 100 ? '...' : ''}`);
+        console.log('===========================================\n');
+
         await transporter.sendMail(mailOptions);
         return { success: true };
     } catch (error) {

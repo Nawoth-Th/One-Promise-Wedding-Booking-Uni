@@ -102,18 +102,27 @@ export async function uploadPaymentProof(formData: FormData, orderId: string): P
   }
 }
 
-export async function verifyPayment(orderId: string, status: "Verified" | "Rejected") {
+export async function verifyPayment(orderId: string, status: "Verified" | "Rejected", amount: number = 0): Promise<{ success: boolean; order?: any; error?: string }> {
   try {
     const order = await api.getOrderById(orderId);
+    
+    // Logic: Update Balance on Verification
+    // Feature: Automatically debit the entered amount from the outstanding balance.
+    let newBalance = order.financials.balance;
+    if (status === 'Verified') {
+        newBalance = Math.max(0, order.financials.balance - amount);
+    }
+
     const financials = {
       ...order.financials,
+      balance: newBalance,
       paymentProof: {
         ...(order.financials.paymentProof || { url: "", uploadedAt: new Date() }),
         status: status as "Verified" | "Rejected"
       }
     };
-    await api.updateOrder(orderId, { financials } as any);
-    return { success: true }
+    const updatedOrder = await api.updateOrder(orderId, { financials } as any);
+    return { success: true, order: updatedOrder }
   } catch(e) {
     console.error(e)
     return { success: false }

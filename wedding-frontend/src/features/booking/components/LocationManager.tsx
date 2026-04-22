@@ -284,7 +284,7 @@ export function LocationManager({ form, libraryLocations }: LocationManagerProps
                       <div className="relative">
                         <Input placeholder="Google Maps URL..." className="h-8 text-[10px] pr-8" {...field} />
                         {field.value && (
-                          <a href={field.value} target="_blank" rel="noreferrer" className="absolute right-2 top-2 text-primary hover:text-primary/70">
+                          <a href={field.value} target="_blank" rel="noreferrer" className="absolute right-2 top-2 text-primary hover:text-primary/70" title="Open on Google Maps" aria-label="Open on Google Maps">
                             <ExternalLink className="h-3 w-3" />
                           </a>
                         )}

@@ -20,6 +20,7 @@ export interface IEvent extends Document {
     description?: string; // Optional context
     date: Date;           // The blocked date
     type: 'manual';      // Differentiator for the calendar view
+    isOverridable: boolean; // True if major events can override this block (e.g., birthday shoots)
     assignedTeam?: mongoose.Types.ObjectId[]; // Staff needed for this task
 }
 
@@ -29,6 +30,7 @@ const eventSchema = new Schema<IEvent>(
         description: { type: String },
         date: { type: Date, required: true },
         type: { type: String, default: 'manual' },
+        isOverridable: { type: Boolean, default: false },
         assignedTeam: [{ type: Schema.Types.ObjectId, ref: 'TeamMember' }],
     },
     {

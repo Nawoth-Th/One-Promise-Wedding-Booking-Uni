@@ -48,12 +48,15 @@ export const getStatsSummary = async (req: Request, res: Response) => {
 
         // Logic: Group revenue by the month of the Order creation.
         const revenueByMonth = await Order.aggregate([
-            { $match: { status: { $ne: 'Cancelled' } } },
+            { $match: { 
+                status: { $ne: 'Cancelled' },
+                'eventDetails.mainDate': { $exists: true }
+            } },
             {
                 $group: {
                     _id: {
-                        month: { $month: '$createdAt' },
-                        year: { $year: '$createdAt' }
+                        month: { $month: '$eventDetails.mainDate' },
+                        year: { $year: '$eventDetails.mainDate' }
                     },
                     revenue: { $sum: '$financials.totalAmount' },
                     count: { $sum: 1 }
@@ -107,6 +110,30 @@ export const getStatsSummary = async (req: Request, res: Response) => {
                     eventCount: { $sum: 1 }
                 }
             },
+            {
+                // Logic: Resolve names for the report display
+                $lookup: {
+                    from: 'teammembers',
+                    let: { memberId: '$_id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ['$_id', { $toObjectId: '$$memberId' }] }
+                            }
+                        },
+                        { $project: { name: 1 } }
+                    ],
+                    as: 'memberInfo'
+                }
+            },
+            { $unwind: '$memberInfo' },
+            {
+                $project: {
+                    _id: 1,
+                    name: '$memberInfo.name',
+                    eventCount: 1
+                }
+            },
             { $sort: { eventCount: -1 } },
             { $limit: 10 }
         ]);
@@ -125,13 +152,51 @@ export const getStatsSummary = async (req: Request, res: Response) => {
             { $limit: 5 }
         ]);
 
+        // Report 05: Predictive Analytics (Next Event)
+        // Logic: Find the chronologically closest event date that is today or in the future.
+        const nextEventData = await Order.findOne(
+            { 
+                'eventDetails.mainDate': { $gte: new Date() },
+                status: { $in: ['Confirmed', 'Pending'] }
+            },
+            { orderNumber: 1, 'eventDetails.mainDate': 1, 'clientInfo.name': 1, wedding: 1, homecoming: 1, engagement: 1, preShoot: 1 }
+        ).sort({ 'eventDetails.mainDate': 1 });
+
+        let nextEvent = null;
+        if (nextEventData) {
+            nextEvent = {
+                orderNumber: nextEventData.orderNumber,
+                date: nextEventData.eventDetails.mainDate,
+                clientName: nextEventData.clientInfo.name,
+                type: nextEventData.wedding?.date ? 'Wedding' : 
+                      nextEventData.homecoming?.date ? 'Homecoming' : 
+                      nextEventData.engagement?.date ? 'Engagement' : 'Pre-Shoot'
+            };
+        }
+
+        // Report 06: Marketing Insights (Referral Analysis)
+        // Logic: Unwind the referralSource array to quantify lead generation channels.
+        const referralSources = await Order.aggregate([
+            { $match: { 'agreementDetails.referralSource': { $exists: true, $ne: [] } } },
+            { $unwind: '$agreementDetails.referralSource' },
+            {
+                $group: {
+                    _id: '$agreementDetails.referralSource',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]);
+
         res.json({
             summary: financials[0] || { totalRevenue: 0, totalBalance: 0, averageOrderValue: 0, count: 0 },
             revenueByMonth,
             packageDistribution,
             eventTypes: eventTypeCounts[0] || { wedding: 0, homecoming: 0, engagement: 0, preShoot: 0 },
             teamUtilization,
-            topVenues
+            topVenues,
+            nextEvent,
+            referralSources
         });
     } catch (error) {
         console.error('Stats error:', error);

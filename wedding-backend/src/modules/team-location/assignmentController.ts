@@ -14,6 +14,7 @@ import { Request, Response } from 'express';
 import { Order } from '../booking/Order';
 import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
+import { generateEmailHtml } from '../../utils/emailTemplate';
 import { format } from 'date-fns';
 
 /**
@@ -133,7 +134,21 @@ export const updateAssignments = async (req: Request, res: Response) => {
                             await sendEmail({
                                 email: member.email,
                                 subject: `New Assignment: ${eventType.toUpperCase()} - ${updatedOrder.orderNumber}`,
-                                message: `Hello ${member.name},\n\nYou have been assigned to a new event.\n\nEvent Type: ${eventType.toUpperCase()}\nOrder: ${updatedOrder.orderNumber}\nDate: ${dateStr}\n\nPlease check the admin portal for more details.`
+                                message: `Hello ${member.name}, you have been assigned to ${eventType.toUpperCase()} on ${dateStr}.`,
+                                html: generateEmailHtml({
+                                    title: 'New Staff Assignment',
+                                    content: `
+                                        <p>Hello ${member.name},</p>
+                                        <p>You have been officially assigned to the following event:</p>
+                                        <div style="background-color: #fafaFA; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+                                            <p style="margin: 0;"><strong>Event:</strong> ${eventType.toUpperCase()}</p>
+                                            <p style="margin: 5px 0 0 0;"><strong>Client:</strong> ${updatedOrder.clientInfo.name}</p>
+                                            <p style="margin: 5px 0 0 0;"><strong>Date:</strong> ${dateStr}</p>
+                                            <p style="margin: 5px 0 0 0;"><strong>Order:</strong> ${updatedOrder.orderNumber}</p>
+                                        </div>
+                                        <p>Please check the admin portal for full details.</p>
+                                    `
+                                })
                             });
                         }
                     }

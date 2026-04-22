@@ -16,6 +16,7 @@ import { Order } from './Order';
 import { Event } from '../events/eventModel';
 import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
+import { generateEmailHtml } from '../../utils/emailTemplate';
 import { format } from 'date-fns';
 
 /**
@@ -115,8 +116,10 @@ export const createOrder = async (req: Request, res: Response) => {
             endOfDay.setHours(23, 59, 59, 999);
 
             // Strategy: Cross-Module Query - Checking the 'Events' module for blocked dates
+            // Feature: Only non-overridable (Hard) blocks prevent new bookings.
             const manualEvent = await Event.findOne({
-                date: { $gte: startOfDay, $lte: endOfDay }
+                date: { $gte: startOfDay, $lte: endOfDay },
+                isOverridable: false
             });
 
             if (manualEvent) {
@@ -138,6 +141,34 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
         const createdOrder = await order.save();
+
+        // Feature: Welcome Email Trigger
+        // Sends an immediate receipt confirmation to the client.
+        if (createdOrder.clientInfo.email) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            await sendEmail({
+                email: createdOrder.clientInfo.email,
+                subject: `Booking Received: One Promise Wedding - ${createdOrder.orderNumber}`,
+                message: `Hello ${createdOrder.clientInfo.name}, we have received your booking request (Order #${createdOrder.orderNumber}).`,
+                html: generateEmailHtml({
+                    title: 'Booking Received!',
+                    preheader: `Thank you for choosing One Promise Wedding. Order #${createdOrder.orderNumber}`,
+                    content: `
+                        <p>Hello ${createdOrder.clientInfo.name},</p>
+                        <p>Thank you for choosing <strong>One Promise Wedding</strong>. We have successfully registered your booking request.</p>
+                        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0; border: 1px solid #eee;">
+                            <p style="margin: 0;"><strong>Order Number:</strong> ${createdOrder.orderNumber}</p>
+                            <p style="margin: 5px 0 0 0;"><strong>Status:</strong> ${createdOrder.status}</p>
+                            <p style="margin: 5px 0 0 0;"><strong>Date:</strong> ${format(new Date(), 'PPP')}</p>
+                        </div>
+                        <p>Our team is currently reviewing your photography requirements. We will notify you once your formal agreement is ready for signature.</p>
+                    `,
+                    ctaText: 'Track My Booking',
+                    ctaUrl: `${frontendUrl}/portal/tracking/${createdOrder.trackingToken}`
+                })
+            });
+        }
+
         res.status(201).json(createdOrder);
     } catch (error) {
         console.error(error);
@@ -280,9 +311,68 @@ export const updateOrder = async (req: Request, res: Response) => {
                 order.markModified('assignments');
             }
 
+            const oldAgreementStatus = order.agreementStatus;
+            const oldPaymentStatus = order.financials.paymentProof?.status;
+
             const updatedOrder = await order.save();
 
-            // Handle Email Notifications for NEW assignments
+            // Feature: Automated Event Triggers (Member 4 - Post-Update)
+            const clientEmail = updatedOrder.clientInfo.email;
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+            if (clientEmail) {
+                // Trigger 1: Agreement Sent manually via Admin Dashboard
+                if (updatedOrder.agreementStatus === 'Sent' && oldAgreementStatus !== 'Sent') {
+                    await sendEmail({
+                        email: clientEmail,
+                        subject: `Action Required: Your Wedding Agreement - ${updatedOrder.orderNumber}`,
+                        message: `Hello ${updatedOrder.clientInfo.name}, your agreement is ready. View it here: ${frontendUrl}/portal/agreement/${updatedOrder.agreementToken}`,
+                        html: generateEmailHtml({
+                            title: 'Agreement Ready',
+                            content: `<p>Hello ${updatedOrder.clientInfo.name},</p><p>We have prepared your professional photography agreement for Order <strong>${updatedOrder.orderNumber}</strong>.</p><p>Please review the terms and sign the document online using the button below.</p>`,
+                            ctaText: 'View & Sign Agreement',
+                            ctaUrl: `${frontendUrl}/portal/agreement/${updatedOrder.agreementToken}`
+                        })
+                    });
+                }
+
+                // Trigger 2: Payment Verification Logic
+                const newPaymentStatus = updatedOrder.financials.paymentProof?.status;
+                if (newPaymentStatus && newPaymentStatus !== oldPaymentStatus) {
+                    if (newPaymentStatus === 'Verified') {
+                        await sendEmail({
+                            email: clientEmail,
+                            subject: `Confirmed: Payment Verified - ${updatedOrder.orderNumber}`,
+                            message: `Hello ${updatedOrder.clientInfo.name}, your payment is verified.`,
+                            html: generateEmailHtml({
+                                title: 'Payment Confirmed',
+                                content: `
+                                    <p>Hello ${updatedOrder.clientInfo.name},</p>
+                                    <p>Great news! Your payment proof for Order <strong>${updatedOrder.orderNumber}</strong> has been successfully verified by our finance team.</p>
+                                    <p>Your booking is now officially <strong>Confirmed</strong>.</p>
+                                    <div style="background-color: #e6fffa; border: 1px solid #b2f5ea; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                                        <p style="margin: 0; color: #2c7a7b;"><strong>Remaining Balance:</strong> LKR ${updatedOrder.financials.balance.toLocaleString()}</p>
+                                    </div>
+                                `
+                            })
+                        });
+                    } else if (newPaymentStatus === 'Rejected') {
+                        await sendEmail({
+                            email: clientEmail,
+                            subject: `Urgent: Payment Proof Issue - ${updatedOrder.orderNumber}`,
+                            message: `Hello ${updatedOrder.clientInfo.name}, we could not verify your payment.`,
+                            html: generateEmailHtml({
+                                title: 'Payment Re-upload Required',
+                                content: `<p>Hello ${updatedOrder.clientInfo.name},</p><p>We encountered an issue while verifying your payment proof for Order <strong>${updatedOrder.orderNumber}</strong>. It may be due to a blurry image or incorrect transaction details.</p><p>Please re-upload a clear copy of your bank receipt in your portal.</p>`,
+                                ctaText: 'Re-upload Receipt',
+                                ctaUrl: `${frontendUrl}/portal/tracking/${updatedOrder.trackingToken}`
+                            })
+                        });
+                    }
+                }
+            }
+
+            // Handle Email Notifications for NEW assignments (Branded)
             if (req.body.assignments) {
                 const events: ("wedding" | "homecoming" | "engagement" | "preShoot")[] = ["wedding", "homecoming", "engagement", "preShoot"];
                 
@@ -302,8 +392,22 @@ export const updateOrder = async (req: Request, res: Response) => {
                                 const dateStr = eventDate ? format(new Date(eventDate), 'PPP') : 'TBD';
                                 await sendEmail({
                                     email: member.email,
-                                    subject: `New Assignment: ${eventType.toUpperCase()} - ${orderNum}`,
-                                    message: `Hello ${member.name},\n\nYou have been assigned to a new event.\n\nEvent Type: ${eventType.toUpperCase()}\nOrder: ${orderNum}\nClient: ${clientName}\nDate: ${dateStr}\n\nPlease check the admin portal for more details.\n\nBest regards,\nNawography Team`
+                                    subject: `New Event Assignment: ${eventType.toUpperCase()} - ${orderNum}`,
+                                    message: `Hello ${member.name}, you have been assigned to ${eventType.toUpperCase()} on ${dateStr}.`,
+                                    html: generateEmailHtml({
+                                        title: 'New Staff Assignment',
+                                        content: `
+                                            <p>Hello ${member.name},</p>
+                                            <p>You have been officially assigned to the following event:</p>
+                                            <div style="background-color: #fafaFA; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+                                                <p style="margin: 0;"><strong>Event:</strong> ${eventType.toUpperCase()}</p>
+                                                <p style="margin: 5px 0 0 0;"><strong>Client:</strong> ${clientName}</p>
+                                                <p style="margin: 5px 0 0 0;"><strong>Date:</strong> ${dateStr}</p>
+                                                <p style="margin: 5px 0 0 0;"><strong>Order:</strong> ${orderNum}</p>
+                                            </div>
+                                            <p>Please log in to the system to view the shoot requirements and location details.</p>
+                                        `
+                                    })
                                 });
                             }
                         }
