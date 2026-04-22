@@ -1,8 +1,14 @@
 import { Request, Response } from 'express';
 import { Order } from '../booking/Order';
 import { sendEmail } from '../../utils/sendEmail';
+import { generateEmailHtml } from '../../utils/emailTemplate';
 import cloudinary from '../../config/cloudinary';
 import { Readable } from 'stream';
+
+/**
+ * @file agreementController.ts
+ * @description Manages agreement signing, payment proof uploads, and automated email triggers for the agreement lifecycle.
+ */
 
 // @desc    Update order agreement details / Sign agreement
 export const updateOrderAgreement = async (req: Request, res: Response) => {
@@ -10,6 +16,8 @@ export const updateOrderAgreement = async (req: Request, res: Response) => {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
+        const oldStatus = order.agreementStatus;
+        
         // Update agreement specific fields
         if (req.body.agreementDetails) {
             if (!order.agreementDetails) order.agreementDetails = {};
@@ -19,8 +27,65 @@ export const updateOrderAgreement = async (req: Request, res: Response) => {
         if (req.body.status) order.status = req.body.status;
         
         const updatedOrder = await order.save();
+
+        // Feature: Automated Email Triggers
+        const clientEmail = updatedOrder.clientInfo.email;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+        if (clientEmail) {
+            // Trigger 1: Agreement Sent
+            if (updatedOrder.agreementStatus === 'Sent' && oldStatus !== 'Sent') {
+                await sendEmail({
+                    email: clientEmail,
+                    subject: `Action Required: Wedding Photography Agreement - ${updatedOrder.orderNumber}`,
+                    message: `Hello ${updatedOrder.clientInfo.name}, your agreement is ready.`,
+                    html: generateEmailHtml({
+                        title: 'Agreement Ready for Review',
+                        content: `<p>Hello ${updatedOrder.clientInfo.name},</p><p>Your photography agreement for Order <strong>${updatedOrder.orderNumber}</strong> is ready for review.</p><p>Please click the button below to view and sign it online.</p>`,
+                        ctaText: 'View & Sign Agreement',
+                        ctaUrl: `${frontendUrl}/portal/agreement/${updatedOrder.agreementToken}`
+                    })
+                });
+            }
+
+            // Trigger 2: Agreement Signed
+            if (updatedOrder.agreementStatus === 'Signed' && oldStatus !== 'Signed') {
+                // To Client
+                await sendEmail({
+                    email: clientEmail,
+                    subject: `Agreement Signed Successfully - ${updatedOrder.orderNumber}`,
+                    message: `Hello ${updatedOrder.clientInfo.name}, we have received your signature.`,
+                    html: generateEmailHtml({
+                        title: 'Signature Confirmed',
+                        content: `
+                            <p>Hello ${updatedOrder.clientInfo.name},</p>
+                            <p>Thank you for signing the agreement! We have successfully received your digital signature for Order <strong>${updatedOrder.orderNumber}</strong>.</p>
+                            <p>Your booking status is now: <strong>${updatedOrder.status}</strong></p>
+                            <p>You can track the next steps (like payment proof upload) through your personalized portal.</p>
+                        `,
+                        ctaText: 'Open Client Portal',
+                        ctaUrl: `${frontendUrl}/portal/tracking/${updatedOrder.trackingToken}`
+                    })
+                });
+
+                // To Admin
+                await sendEmail({
+                    email: process.env.EMAIL_USER!,
+                    subject: `URGENT: Agreement Signed - ${updatedOrder.orderNumber}`,
+                    message: `Admin Notice, Client ${updatedOrder.clientInfo.name} has just signed the agreement for Order ${updatedOrder.orderNumber}.`,
+                    html: generateEmailHtml({
+                        title: 'New Signed Agreement',
+                        content: `<p>Admin Notice,</p><p>Client <strong>${updatedOrder.clientInfo.name}</strong> has just signed the agreement for Order <strong>${updatedOrder.orderNumber}</strong>.</p><p>Please check the admin dashboard to review the details and wait for payment proof.</p>`,
+                        ctaText: 'Review Order',
+                        ctaUrl: `${frontendUrl}/admin/reports`
+                    })
+                });
+            }
+        }
+
         res.json(updatedOrder);
     } catch (error) {
+        console.error("Error updating agreement:", error);
         res.status(400).json({ message: 'Invalid agreement data' });
     }
 };
@@ -31,6 +96,7 @@ export const confirmPayment = async (req: Request, res: Response) => {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
+        const oldStatus = order.status;
         if (req.body.financials) {
             const fin = req.body.financials;
             if (fin.paymentProof === undefined) delete fin.paymentProof;
@@ -44,35 +110,50 @@ export const confirmPayment = async (req: Request, res: Response) => {
         }
 
         if (req.body.progress) {
-            if (!order.progress) order.progress = { currentStep: 1, history: [] };
+            if (!order.progress) {
+                // Initialize with required currentStep if missing
+                order.progress = { currentStep: req.body.progress.currentStep || 1 };
+            }
             Object.assign(order.progress, req.body.progress);
         }
-        
+
         const updatedOrder = await order.save();
+
+        // Trigger 3: Payment Verified
+        if (updatedOrder.status === 'Confirmed' && oldStatus !== 'Confirmed' && updatedOrder.clientInfo.email) {
+            await sendEmail({
+                email: updatedOrder.clientInfo.email,
+                subject: `Order Confirmed: Payment Verified - ${updatedOrder.orderNumber}`,
+                message: `Hello ${updatedOrder.clientInfo.name}, your payment is verified.`,
+                html: generateEmailHtml({
+                    title: 'Booking Confirmed!',
+                    content: `<p>Hello ${updatedOrder.clientInfo.name},</p><p>Great news! Your payment has been verified and your booking (Order <strong>#${updatedOrder.orderNumber}</strong>) is now officially <strong>CONFIRMED</strong>.</p><p>We are excited to be part of your special day!</p>`,
+                    ctaText: 'View Dashboard',
+                    ctaUrl: `${process.env.FRONTEND_URL}/portal/tracking/${updatedOrder.trackingToken}`
+                })
+            });
+        }
+
         res.json(updatedOrder);
     } catch (error) {
+        console.error("Error confirming payment:", error);
         res.status(400).json({ message: 'Invalid payment data' });
     }
 };
 
 // @desc    Upload payment proof to Cloudinary
-export const uploadProof = async (req: Request, res: Response) => {
+export const uploadProof = async (req: any, res: Response) => {
+    console.log('Upload Request Received');
     try {
-        console.log('--- Upload Attempt ---');
-        console.log('File received:', !!req.file);
-        if (req.file) {
-            console.log('MimeType:', req.file.mimetype);
-            console.log('Size:', req.file.size);
-        }
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
 
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const order = await Order.findById(req.params.id);
-        if (!order) return res.status(404).json({ message: 'Order not found' });
+        console.log('File details:', req.file.originalname, req.file.mimetype);
 
-        // Strategy: Stream upload to Cloudinary
         const uploadStream = () => {
             return new Promise((resolve, reject) => {
                 const stream = cloudinary.uploader.upload_stream(
@@ -115,6 +196,20 @@ export const uploadProof = async (req: Request, res: Response) => {
 
         order.agreementStatus = 'Reviewing';
         await order.save();
+
+        // Feature: Admin Notification for Payment Proof
+        // Alerts the studio team that a client has submitted a receipt for verification.
+        await sendEmail({
+            email: process.env.EMAIL_USER!,
+            subject: `Action Required: New Payment Proof - ${order.orderNumber}`,
+            message: `Admin Notice, Client ${order.clientInfo.name} has uploaded a payment proof.`,
+            html: generateEmailHtml({
+                title: 'New Payment Submission',
+                content: `<p>Admin Notice,</p><p>Client <strong>${order.clientInfo.name}</strong> has uploaded a payment proof for Order <strong>${order.orderNumber}</strong>.</p><p>Please review the attachment and verify the transaction in the dashboard.</p>`,
+                ctaText: 'Review Proof',
+                ctaUrl: result.secure_url
+            })
+        });
 
         res.json({
             success: true,
