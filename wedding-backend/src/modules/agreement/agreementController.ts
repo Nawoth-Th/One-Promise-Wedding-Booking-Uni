@@ -50,20 +50,33 @@ export const updateOrderAgreement = async (req: Request, res: Response) => {
 
             // Trigger 2: Agreement Signed
             if (updatedOrder.agreementStatus === 'Signed' && oldStatus !== 'Signed') {
-                // To Client
+                // To Client: Signature Confirmation + Payment Request
                 await sendEmail({
                     email: clientEmail,
-                    subject: `Agreement Signed Successfully - ${updatedOrder.orderNumber}`,
-                    message: `Hello ${updatedOrder.clientInfo.name}, we have received your signature.`,
+                    subject: `Confirmed: Agreement Signed & Next Steps - ${updatedOrder.orderNumber}`,
+                    message: `Hello ${updatedOrder.clientInfo.name}, thank you for signing. Please pay the advance of Rs. 25,000 to our bank account.`,
                     html: generateEmailHtml({
-                        title: 'Signature Confirmed',
+                        title: 'Signature Received & Next Steps',
                         content: `
                             <p>Hello ${updatedOrder.clientInfo.name},</p>
-                            <p>Thank you for signing the agreement! We have successfully received your digital signature for Order <strong>${updatedOrder.orderNumber}</strong>.</p>
-                            <p>Your booking status is now: <strong>${updatedOrder.status}</strong></p>
-                            <p>You can track the next steps (like payment proof upload) through your personalized portal.</p>
+                            <p>Thank you for signing the professional photography agreement for Order <strong>${updatedOrder.orderNumber}</strong>. We have officially received your digital signature.</p>
+                            
+                            <div style="background-color: #f0f7ff; border-left: 4px solid #467889; padding: 20px; margin: 25px 0;">
+                                <h3 style="margin-top: 0; color: #1a1a1a;">💳 Advance Payment Required</h3>
+                                <p>To finalize your booking date, a non-refundable advance payment of <strong>Rs. 25,000/-</strong> is required.</p>
+                                
+                                <p style="margin-bottom: 5px;"><strong>Bank Details:</strong></p>
+                                <ul style="list-style: none; padding: 0; margin: 0;">
+                                    <li><strong>Bank:</strong> Commercial Bank of Ceylon</li>
+                                    <li><strong>Account Name:</strong> One Promise Wedding (Pvt) Ltd</li>
+                                    <li><strong>Account Number:</strong> 8012345678</li>
+                                    <li><strong>Branch:</strong> Colombo Fort</li>
+                                </ul>
+                            </div>
+                            
+                            <p>Once you have made the transfer, please <strong>upload a clear photo/screenshot of the bank receipt</strong> to your personalized tracking portal using the button below.</p>
                         `,
-                        ctaText: 'Open Client Portal',
+                        ctaText: 'Upload Payment Proof',
                         ctaUrl: `${frontendUrl}/portal/tracking/${updatedOrder.trackingToken}`
                     })
                 });
