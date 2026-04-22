@@ -29,6 +29,7 @@ interface CalendarEvent {
   eventType?: string;
   orderId?: string;
   description?: string;
+  isOverridable?: boolean;
   assignedTeam?: { _id?: string; name: string; role: string }[];
 }
 
@@ -38,7 +39,7 @@ export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isLoading, setIsLoading] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [newEvent, setNewEvent] = useState({ title: "", description: "" })
+  const [newEvent, setNewEvent] = useState({ title: "", description: "", isOverridable: false })
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [selectedTeam, setSelectedTeam] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,11 +71,12 @@ export default function EventsPage() {
         title: newEvent.title,
         description: newEvent.description,
         date: selectedDate,
+        isOverridable: newEvent.isOverridable,
         assignedTeam: selectedTeam
       })
       toast.success("Manual event added")
       setIsAddModalOpen(false)
-      setNewEvent({ title: "", description: "" })
+      setNewEvent({ title: "", description: "", isOverridable: false })
       setSelectedTeam([])
       loadData()
     } catch (err: any) {
@@ -153,6 +155,22 @@ export default function EventsPage() {
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                 />
+              </div>
+
+              <div className="flex items-center space-x-2 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <Checkbox 
+                  id="overridable" 
+                  checked={newEvent.isOverridable}
+                  onCheckedChange={(checked) => setNewEvent({ ...newEvent, isOverridable: !!checked })}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="overridable" className="text-sm font-semibold text-amber-900 cursor-pointer">
+                    Allow Overrides (Soft Block)
+                  </Label>
+                  <p className="text-[10px] text-amber-700">
+                    Enable this for minor events like "Birthday Shoots" that can be bumped if a major Wedding order comes in.
+                  </p>
+                </div>
               </div>
 
               <div className="grid gap-2">
@@ -252,7 +270,9 @@ export default function EventsPage() {
                     className={`p-4 rounded-xl border-l-4 shadow-sm transition-all hover:translate-x-1 ${
                       event.type === 'order' 
                         ? 'bg-primary/5 border-primary' 
-                        : 'bg-orange-500/5 border-orange-500'
+                        : event.isOverridable 
+                          ? 'bg-amber-500/5 border-amber-400 border-dashed'
+                          : 'bg-orange-500/5 border-orange-500'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1">
@@ -268,8 +288,14 @@ export default function EventsPage() {
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
-                        <Badge variant={event.type === 'order' ? 'secondary' : 'outline'} className={`text-[10px] h-4 ${event.type === 'manual' ? 'border-orange-500 text-orange-600' : ''}`}>
-                          {event.type.toUpperCase()}
+                        <Badge variant={event.type === 'order' ? 'secondary' : 'outline'} className={`text-[10px] h-4 ${
+                          event.type === 'manual' 
+                            ? event.isOverridable 
+                              ? 'border-amber-400 text-amber-600 bg-amber-50' 
+                              : 'border-orange-500 text-orange-600' 
+                            : ''
+                        }`}>
+                          {event.type === 'order' ? 'ORDER' : event.isOverridable ? 'SOFT BLOCK' : 'HARD BLOCK'}
                         </Badge>
                       </div>
                     </div>
@@ -324,12 +350,14 @@ export default function EventsPage() {
                   </div>
                 ))}
 
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex gap-3">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  <p className="text-xs leading-relaxed">
-                    <strong>Overlap Prevented:</strong> This date is marked as occupied in the system. New orders cannot be booked on this day.
-                  </p>
-                </div>
+                {eventsOnSelectedDate.some(e => e.type === 'order' || (e.type === 'manual' && !e.isOverridable)) && (
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex gap-3">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <p className="text-xs leading-relaxed">
+                      <strong>Overlap Prevented:</strong> This date is marked as occupied in the system. New orders cannot be booked on this day.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

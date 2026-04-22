@@ -76,6 +76,7 @@ export const getEvents = async (req: Request, res: Response) => {
             title: e.title,
             date: e.date,
             type: 'manual',
+            isOverridable: e.isOverridable,
             description: e.description,
             assignedTeam: e.assignedTeam
         }));
@@ -92,7 +93,7 @@ export const getEvents = async (req: Request, res: Response) => {
  */
 export const createManualEvent = async (req: Request, res: Response) => {
     try {
-        const { title, date, description, assignedTeam } = req.body;
+        const { title, date, description, assignedTeam, isOverridable } = req.body;
         const eventDate = new Date(date);
 
         // Feature: Double-Booking Prevention Logic
@@ -127,6 +128,7 @@ export const createManualEvent = async (req: Request, res: Response) => {
             title, 
             date: eventDate, 
             description,
+            isOverridable: isOverridable || false,
             assignedTeam: assignedTeam || []
         });
         await newEvent.save();

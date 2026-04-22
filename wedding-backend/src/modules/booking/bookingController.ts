@@ -115,8 +115,10 @@ export const createOrder = async (req: Request, res: Response) => {
             endOfDay.setHours(23, 59, 59, 999);
 
             // Strategy: Cross-Module Query - Checking the 'Events' module for blocked dates
+            // Feature: Only non-overridable (Hard) blocks prevent new bookings.
             const manualEvent = await Event.findOne({
-                date: { $gte: startOfDay, $lte: endOfDay }
+                date: { $gte: startOfDay, $lte: endOfDay },
+                isOverridable: false
             });
 
             if (manualEvent) {
