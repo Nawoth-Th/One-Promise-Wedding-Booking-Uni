@@ -81,8 +81,13 @@ export const uploadProof = async (req: Request, res: Response) => {
                         public_id: `proof_${order.orderNumber}_${Date.now()}`,
                     },
                     (error, result) => {
-                        if (result) resolve(result);
-                        else reject(error);
+                        if (result) {
+                            console.log('Cloudinary Success:', result.secure_url);
+                            resolve(result);
+                        } else {
+                            console.error('Cloudinary Stream Error:', error);
+                            reject(error);
+                        }
                     }
                 );
                 Readable.from(req.file!.buffer).pipe(stream);
@@ -90,6 +95,7 @@ export const uploadProof = async (req: Request, res: Response) => {
         };
 
         const result: any = await uploadStream();
+        console.log('Upload Stream Completed');
 
         // Update order financials
         if (!order.financials) {
