@@ -313,6 +313,7 @@ export const updateOrder = async (req: Request, res: Response) => {
 
             const oldAgreementStatus = order.agreementStatus;
             const oldPaymentStatus = order.financials.paymentProof?.status;
+            const oldStep = order.progress?.currentStep || 0;
 
             const updatedOrder = await order.save();
 
@@ -321,6 +322,44 @@ export const updateOrder = async (req: Request, res: Response) => {
             const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
             if (clientEmail) {
+                // Trigger: Progress Tracker Milestone Update
+                const newStep = updatedOrder.progress?.currentStep || 0;
+                if (newStep !== oldStep && newStep > 0) {
+                    const stepNames: { [key: number]: string } = {
+                        1: "Agreement & Payment",
+                        2: "Event Day (Live)",
+                        3: "Media Ingested",
+                        4: "Sneak Peek Selection",
+                        5: "Sneak Peek Delivered",
+                        6: "Full Gallery Culling",
+                        7: "Color Grading & Editing",
+                        8: "Final Gallery Delivery",
+                        9: "Album Design (Optional)",
+                        10: "Archive & Complete"
+                    };
+
+                    const milestoneName = stepNames[newStep] || `Step ${newStep}`;
+                    await sendEmail({
+                        email: clientEmail,
+                        subject: `Milestone Update: Your Wedding Media - Step ${newStep}`,
+                        message: `Hello ${updatedOrder.clientInfo.name}, your wedding media progress has reached: ${milestoneName}.`,
+                        html: generateEmailHtml({
+                            title: 'New Milestone Reached!',
+                            preheader: `Progress Update: ${milestoneName}`,
+                            content: `
+                                <p>Hello ${updatedOrder.clientInfo.name},</p>
+                                <p>We are excited to inform you that your wedding media production has moved to the next stage!</p>
+                                <div style="background-color: #f0f7ff; border-left: 4px solid #467889; padding: 20px; margin: 20px 0;">
+                                    <p style="margin: 0; font-size: 14px; color: #666;">Current Stage:</p>
+                                    <h3 style="margin: 5px 0 0 0; color: #1a1a1a;">Step ${newStep}: ${milestoneName}</h3>
+                                </div>
+                                <p>Our team is working diligently to ensure your memories are preserved with the highest quality. You can see the full timeline and detailed status in your portal.</p>
+                            `,
+                            ctaText: 'View My Timeline',
+                            ctaUrl: `${frontendUrl}/portal/tracking/${updatedOrder.trackingToken}`
+                        })
+                    });
+                }
                 // Trigger 1: Agreement Sent manually via Admin Dashboard
                 if (updatedOrder.agreementStatus === 'Sent' && oldAgreementStatus !== 'Sent') {
                     await sendEmail({

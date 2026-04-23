@@ -130,7 +130,49 @@ export const confirmPayment = async (req: Request, res: Response) => {
             Object.assign(order.progress, req.body.progress);
         }
 
+        const oldStep = order.progress?.currentStep || 0;
         const updatedOrder = await order.save();
+
+        // Trigger: Progress Tracker Milestone Update (Synced)
+        if (updatedOrder.clientInfo.email) {
+            const newStep = updatedOrder.progress?.currentStep || 0;
+            if (newStep !== oldStep && newStep > 0) {
+                const stepNames: { [key: number]: string } = {
+                    1: "Agreement & Payment",
+                    2: "Event Day (Live)",
+                    3: "Media Ingested",
+                    4: "Sneak Peek Selection",
+                    5: "Sneak Peek Delivered",
+                    6: "Full Gallery Culling",
+                    7: "Color Grading & Editing",
+                    8: "Final Gallery Delivery",
+                    9: "Album Design (Optional)",
+                    10: "Archive & Complete"
+                };
+
+                const milestoneName = stepNames[newStep] || `Step ${newStep}`;
+                await sendEmail({
+                    email: updatedOrder.clientInfo.email,
+                    subject: `Milestone Update: Your Wedding Media - Step ${newStep}`,
+                    message: `Hello ${updatedOrder.clientInfo.name}, your wedding media progress has reached: ${milestoneName}.`,
+                    html: generateEmailHtml({
+                        title: 'New Milestone Reached!',
+                        preheader: `Progress Update: ${milestoneName}`,
+                        content: `
+                            <p>Hello ${updatedOrder.clientInfo.name},</p>
+                            <p>Great news! Your wedding journey has moved forward.</p>
+                            <div style="background-color: #f0f7ff; border-left: 4px solid #467889; padding: 20px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 14px; color: #666;">Current Stage:</p>
+                                <h3 style="margin: 5px 0 0 0; color: #1a1a1a;">Step ${newStep}: ${milestoneName}</h3>
+                            </div>
+                            <p>We are dedicated to capturing and processing your memories with the utmost care. Log in to your portal to see more details.</p>
+                        `,
+                        ctaText: 'Open Tracking Portal',
+                        ctaUrl: `${process.env.FRONTEND_URL}/portal/tracking/${updatedOrder.trackingToken}`
+                    })
+                });
+            }
+        }
 
         // Trigger 3: Payment Verified
         if (updatedOrder.status === 'Confirmed' && oldStatus !== 'Confirmed' && updatedOrder.clientInfo.email) {
