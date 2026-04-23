@@ -9,7 +9,7 @@ import {
   getPricingItems, 
   deleteOrder, 
   getActiveTeamMembers 
-} from "@/lib/mock-actions"
+} from "@/lib/order-actions"
 import { TeamAssignment } from "@/features/team-location/team-assignment"
 import { ProgressTrackerAdmin } from "@/features/agreement/progress-tracker-admin"
 import { LocationPicker } from "@/features/team-location/location-picker"
@@ -65,6 +65,7 @@ export function OrderDetailsView({ order: initialOrder }: OrderDetailsViewProps)
     const [editedOrder, setEditedOrder] = useState<Order>(initialOrder)
     const [origin, setOrigin] = useState('')
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+    const [advanceAmount, setAdvanceAmount] = useState<string>('')
 
     useEffect(() => {
         setOrigin(window.location.origin)
@@ -247,20 +248,27 @@ export function OrderDetailsView({ order: initialOrder }: OrderDetailsViewProps)
 
 
     const handleVerifyPayment = async (status: "Verified" | "Rejected") => {
+        if (status === 'Verified') {
+            const amount = Number(advanceAmount)
+            if (!advanceAmount || isNaN(amount) || amount <= 0) {
+                toast({
+                    title: "Invalid Amount",
+                    description: "Please enter a valid positive payment amount.",
+                    variant: "destructive"
+                })
+                return
+            }
+        }
+
         setIsLoading(true)
         try {
-            const result = await verifyPayment(order._id!, status)
+            const result = await verifyPayment(order._id!, status, status === 'Verified' ? Number(advanceAmount) : undefined)
             if (result.success) {
-                setOrder(prev => ({
-                    ...prev,
-                    financials: {
-                        ...prev.financials,
-                        paymentProof: {
-                            ...prev.financials.paymentProof!,
-                            status: status
-                        }
-                    }
-                }))
+                // Ensure result.order is typed and mapped correctly
+                const updatedOrder = result.order as Order
+                setOrder(updatedOrder)
+                setEditedOrder(updatedOrder)
+                setAdvanceAmount('') // Clear input
                 toast({
                     title: "Payment Status Updated",
                     description: `Payment has been marked as ${status}.`,
@@ -1644,12 +1652,14 @@ Notes: ${order.eventDetails.notes || "None"}`;
                                          <div className="flex items-center justify-between">
                                              <div className="flex items-center gap-2">
                                                  <span className="font-semibold text-sm uppercase tracking-wide">Advance Payment Proof</span>
-                                                 <Badge variant={
-                                                    order.financials.paymentProof.status === 'Verified' ? 'default' : 
-                                                    order.financials.paymentProof.status === 'Rejected' ? 'destructive' : 'secondary'
-                                                 } className={order.financials.paymentProof.status === 'Verified' ? 'bg-green-600 hover:bg-green-700' : ''}>
-                                                     {order.financials.paymentProof.status}
-                                                 </Badge>
+                                                 <Badge variant="outline" className={`
+                                                    capitalize px-3 py-1 rounded-full text-xs font-bold
+                                                    ${order.financials.paymentProof.status === 'Verified' ? 'bg-green-500 text-white border-green-600' :
+                                                      order.financials.paymentProof.status === 'Rejected' ? 'bg-red-100 !text-red-600 border-red-300' :
+                                                      'bg-yellow-100 text-yellow-800 border-yellow-400'}
+                                                `}>
+                                                    {order.financials.paymentProof.status || 'Pending'}
+                                                </Badge>
                                              </div>
                                              <div className="text-xs text-muted-foreground">
                                                  Uploaded: {new Date(order.financials.paymentProof.uploadedAt).toLocaleString()}
@@ -1669,16 +1679,58 @@ Notes: ${order.eventDetails.notes || "None"}`;
                                                  </div>
                                              </div>
                                              
-                                             <div className="space-y-2">
+                                             <div className="flex-1 space-y-4">
                                                  <p className="text-sm text-muted-foreground">
                                                      Please verify the payment receipt against the bank statement.
                                                  </p>
-                                                 <div className="flex gap-2">
-                                                     <Button size="sm" onClick={() => handleVerifyPayment('Verified')} disabled={isLoading || order.financials.paymentProof?.status === 'Verified'}>
-                                                         <CheckCircle className="w-4 h-4 mr-2" /> Verify
+
+                                                 {/* Feature: Advance Amount Input */}
+                                                 {order.financials.paymentProof.status === 'Pending' && (
+                                                     <div className="space-y-2 pt-2 border-t border-dashed">
+                                                         <Label htmlFor="advanceAmount" className="text-xs font-bold uppercase tracking-wider">Confirm Payment Amount (LKR)</Label>
+                                                         <Input 
+                                                             id="advanceAmount"
+                                                             type="number"
+                                                             min="0"
+                                                             placeholder="Enter Slip Amount..."
+                                                             value={advanceAmount}
+                                                             onChange={(e) => setAdvanceAmount(e.target.value)}
+                                                             className="bg-background border-primary/20 focus:border-primary"
+                                                         />
+                                                     </div>
+                                                 )}
+
+                                                 {/* Processed State Summary */}
+                                                 {order.financials.paymentProof.status !== 'Pending' && (
+                                                    <div className={`p-3 rounded-lg flex items-center gap-2 border text-xs ${
+                                                        order.financials.paymentProof.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                        'bg-red-50 !text-red-600 border-red-200'
+                                                    }`}>
+                                                        {order.financials.paymentProof.status === 'Verified' ? <CheckCircle className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                                                        <span>
+                                                            <strong>{order.financials.paymentProof.status}</strong> - 
+                                                            {order.financials.paymentProof.status === 'Verified' ? ' Balance has been debited.' : ' Proof rejected.'}
+                                                        </span>
+                                                    </div>
+                                                 )}
+
+                                                 <div className="flex gap-2 pt-2 border-t">
+                                                     <Button 
+                                                        size="sm" 
+                                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-30"
+                                                        onClick={() => handleVerifyPayment('Verified')} 
+                                                        disabled={isLoading || order.financials.paymentProof?.status !== 'Pending'}
+                                                     >
+                                                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />} Verify
                                                      </Button>
-                                                     <Button size="sm" variant="destructive" onClick={() => handleVerifyPayment('Rejected')} disabled={isLoading || order.financials.paymentProof?.status === 'Rejected'}>
-                                                         <X className="w-4 h-4 mr-2" /> Reject
+                                                     <Button 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        className="flex-1 border-red-500 !text-red-600 hover:bg-red-50 font-extrabold disabled:opacity-30"
+                                                        onClick={() => handleVerifyPayment('Rejected')} 
+                                                        disabled={isLoading || order.financials.paymentProof?.status !== 'Pending'}
+                                                     >
+                                                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <X className="w-4 h-4 mr-2" />} Reject
                                                      </Button>
                                                  </div>
                                              </div>

@@ -1,10 +1,27 @@
+/**
+ * @file assignmentController.ts
+ * @description Logic for managing staff assignments and availability.
+ * This is a critical module for operational scheduling, ensuring no team member
+ * is double-booked across different orders.
+ * 
+ * Features:
+ * - Real-time Availability Check: Queries all orders to find busy staff.
+ * - Assignment Overlap Validation: Prevents assigning a busy person to a new event.
+ * - Automated Staff Notification: Sends emails to newly assigned team members.
+ */
+
 import { Request, Response } from 'express';
 import { Order } from '../booking/Order';
 import { TeamMember } from '../team-location/TeamMember';
 import { sendEmail } from '../../utils/sendEmail';
+import { generateEmailHtml } from '../../utils/emailTemplate';
 import { format } from 'date-fns';
 
-// @desc    Get busy team members for a specific date
+/**
+ * @desc    Get busy team members for a specific date.
+ * @route   GET /api/availability?date=YYYY-MM-DD
+ * @access  Internal (Used by Assignment Dashboard)
+ */
 export const getAvailability = async (req: Request, res: Response) => {
     try {
         const { date } = req.query;
@@ -16,6 +33,8 @@ export const getAvailability = async (req: Request, res: Response) => {
         const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
 
+        // Feature: Cross-Collection Querying
+        // Finds all orders where any event (Wedding, HC, etc.) lands on this date.
         const orders = await Order.find({
             $or: [
                 { 'wedding.date': { $gte: startOfDay, $lte: endOfDay } },
@@ -25,6 +44,7 @@ export const getAvailability = async (req: Request, res: Response) => {
             ]
         });
 
+        // Strategy: Unique Set Aggregation
         const busyMemberIds = new Set<string>();
         orders.forEach(order => {
             if (order.wedding?.date && isSameDay(order.wedding.date, targetDate)) {
@@ -114,7 +134,21 @@ export const updateAssignments = async (req: Request, res: Response) => {
                             await sendEmail({
                                 email: member.email,
                                 subject: `New Assignment: ${eventType.toUpperCase()} - ${updatedOrder.orderNumber}`,
-                                message: `Hello ${member.name},\n\nYou have been assigned to a new event.\n\nEvent Type: ${eventType.toUpperCase()}\nOrder: ${updatedOrder.orderNumber}\nDate: ${dateStr}\n\nPlease check the admin portal for more details.`
+                                message: `Hello ${member.name}, you have been assigned to ${eventType.toUpperCase()} on ${dateStr}.`,
+                                html: generateEmailHtml({
+                                    title: 'New Staff Assignment',
+                                    content: `
+                                        <p>Hello ${member.name},</p>
+                                        <p>You have been officially assigned to the following event:</p>
+                                        <div style="background-color: #fafaFA; padding: 15px; border: 1px solid #eee; border-radius: 5px;">
+                                            <p style="margin: 0;"><strong>Event:</strong> ${eventType.toUpperCase()}</p>
+                                            <p style="margin: 5px 0 0 0;"><strong>Client:</strong> ${updatedOrder.clientInfo.name}</p>
+                                            <p style="margin: 5px 0 0 0;"><strong>Date:</strong> ${dateStr}</p>
+                                            <p style="margin: 5px 0 0 0;"><strong>Order:</strong> ${updatedOrder.orderNumber}</p>
+                                        </div>
+                                        <p>Please check the admin portal for full details.</p>
+                                    `
+                                })
                             });
                         }
                     }
@@ -128,6 +162,10 @@ export const updateAssignments = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Utility: Date Comparison
+ * Logic: Checks if two dates fallback on the same calendar day irrespective of time.
+ */
 const isSameDay = (d1: Date, d2: Date) => {
     return d1.getFullYear() === d2.getFullYear() &&
            d1.getMonth() === d2.getMonth() &&

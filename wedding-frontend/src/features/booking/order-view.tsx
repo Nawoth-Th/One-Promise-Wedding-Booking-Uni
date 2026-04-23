@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { format } from "date-fns"
 import OrderDownloadButton from "@/features/agreement/order-download-button"
 import { useState } from "react"
-import { verifyPayment } from "@/lib/mock-actions"
+import { verifyPayment } from "@/lib/order-actions"
 import { toast } from "sonner"
 import { CheckCircle2, XCircle, Loader2, Eye } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 import { CopyLinkButton } from "@/components/admin/copy-link-button"
+
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 interface OrderViewProps {
   order: Order
@@ -21,23 +24,33 @@ interface OrderViewProps {
 export default function OrderView({ order: initialOrder }: OrderViewProps) {
   const [order, setOrder] = useState(initialOrder)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [advanceAmount, setAdvanceAmount] = useState<string>("")
 
   const handleVerify = async (status: "Verified" | "Rejected") => {
+    // Feature: Amount Validation
+    if (status === "Verified" && (!advanceAmount || isNaN(Number(advanceAmount)) || Number(advanceAmount) <= 0)) {
+        toast.error("Please enter a valid advance amount to verify.");
+        return;
+    }
+
     setIsVerifying(true)
     try {
-      const res = await verifyPayment(order._id!, status)
+      const amount = Number(advanceAmount) || 0
+      const res = await verifyPayment(order._id!, status, amount)
       if (res.success) {
         toast.success(`Payment marked as ${status}`)
         setOrder({
           ...order,
           financials: {
             ...order.financials,
+            balance: status === "Verified" ? Math.max(0, order.financials.balance - amount) : order.financials.balance,
             paymentProof: {
               ...order.financials.paymentProof!,
               status
             }
           }
         })
+        setAdvanceAmount("") // Reset on success
       } else {
         toast.error("Failed to update status")
       }
@@ -277,9 +290,9 @@ export default function OrderView({ order: initialOrder }: OrderViewProps) {
                     </div>
                      <Badge variant="outline" className={`
                         capitalize px-3 py-1 rounded-full text-xs font-bold
-                        ${paymentProof.status === 'Verified' ? 'bg-green-500/20 text-green-700 border-green-500/30' :
-                          paymentProof.status === 'Rejected' ? 'bg-red-500/20 text-red-700 border-red-500/30' :
-                          'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'}
+                        ${paymentProof.status === 'Verified' ? 'bg-green-100 text-green-700 border-green-300' :
+                          paymentProof.status === 'Rejected' ? 'bg-red-100 !text-red-600 border-red-300' :
+                          'bg-yellow-100 text-yellow-800 border-yellow-400'}
                     `}>
                         {paymentProof.status || 'Pending'}
                     </Badge>
@@ -298,20 +311,57 @@ export default function OrderView({ order: initialOrder }: OrderViewProps) {
                                 </div>
                             </div>
                             
+                            {/* Feature: Advance Amount Input */}
+                            {paymentProof.status === 'Pending' && (
+                                <div className="space-y-2 pt-4 border-t">
+                                    <Label htmlFor="advanceAmount" className="text-sm font-semibold">Verify Advance Amount (LKR)</Label>
+                                    <Input 
+                                        id="advanceAmount"
+                                        type="number"
+                                        min="0"
+                                        placeholder="Enter the amount shown on slip..."
+                                        value={advanceAmount}
+                                        onChange={(e) => setAdvanceAmount(e.target.value)}
+                                        className="bg-background border-primary/20 focus:border-primary"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground italic">
+                                        This amount will be automatically deducted from the Balance Due upon verification.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Feature: Verification Summary */}
+                            {paymentProof.status !== 'Pending' && (
+                                <div className={`p-4 rounded-lg flex items-center gap-3 border ${
+                                    paymentProof.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-200' :
+                                    'bg-red-50 text-red-600 border-red-200'
+                                }`}>
+                                    {paymentProof.status === 'Verified' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                                    <div className="text-sm">
+                                        <p className="font-bold uppercase tracking-tight">Payment {paymentProof.status}</p>
+                                        <p className="text-[11px] opacity-80">
+                                            {paymentProof.status === 'Verified' ? 
+                                                'The balance has been adjusted and the studio schedule updated.' : 
+                                                'The client has been notified to re-upload a valid proof.'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-3 pt-4 border-t">
                                 <Button 
-                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white" 
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-30" 
                                     onClick={() => handleVerify("Verified")}
-                                    disabled={isVerifying || paymentProof.status === 'Verified'}
+                                    disabled={isVerifying || paymentProof.status !== 'Pending'}
                                 >
                                     {isVerifying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
                                     Verify Payment
                                 </Button>
                                 <Button 
                                     variant="outline" 
-                                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                                    className="flex-1 border-red-500 !text-red-600 hover:bg-red-50 font-extrabold disabled:opacity-30"
                                     onClick={() => handleVerify("Rejected")}
-                                    disabled={isVerifying || paymentProof.status === 'Rejected'}
+                                    disabled={isVerifying || paymentProof.status !== 'Pending'}
                                 >
                                     {isVerifying ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
                                     Reject Proof

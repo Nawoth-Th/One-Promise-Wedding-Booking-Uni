@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createOrderSchema = z.object({
   body: z.object({
-    orderNumber: z.string().min(1, "Order number is required"),
+    orderNumber: z.string().optional(),
     clientInfo: z.object({
       title: z.string().optional(),
       name: z.string()
@@ -49,14 +49,22 @@ export const createOrderSchema = z.object({
         packageType: z.string().optional(),
         addons: z.array(z.string()).optional(),
       }).optional(),
-    locations: z.array(z.object({
-      name: z.string().min(1, "Location name is required"),
-      url: z.string()
-        .url("Invalid URL")
-        .regex(/google\.com\/maps|goo\.gl\/maps/, "Must be a valid Google Maps link")
-        .optional().or(z.literal("")),
-      forEvent: z.string().optional(),
-    })).optional(),
+    eventDetails: z.object({
+      mainDate: z.coerce.date().optional(),
+      locations: z.array(z.object({
+        name: z.string().min(1, "Location name is required"),
+        url: z.string()
+          .url("Invalid URL")
+          .regex(/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/, "Must be a valid Google Maps link")
+          .optional().or(z.literal("")),
+        forEvent: z.string().optional(),
+        mode: z.string().optional(),
+        province: z.string().optional(),
+        district: z.string().optional(),
+      })).optional(),
+      notes: z.string().optional(),
+    }).optional(),
+    locations: z.array(z.any()).optional(),
     financials: z.object({
       packagePrice: z.number().min(0),
       transportCost: z.number().min(0),
@@ -123,14 +131,22 @@ export const updateOrderSchema = z.object({
         packageType: z.string().optional(),
         addons: z.array(z.string()).optional(),
       }).optional(),
-    locations: z.array(z.object({
-      name: z.string().min(1, "Location name is required"),
-      url: z.string()
-        .url("Invalid URL")
-        .regex(/google\.com\/maps|goo\.gl\/maps/, "Must be a valid Google Maps link")
-        .optional().or(z.literal("")),
-      forEvent: z.string().optional(),
-    })).optional(),
+    eventDetails: z.object({
+      mainDate: z.coerce.date().optional(),
+      locations: z.array(z.object({
+        name: z.string().min(1, "Location name is required"),
+        url: z.string()
+          .url("Invalid URL")
+          .regex(/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/, "Must be a valid Google Maps link")
+          .optional().or(z.literal("")),
+        forEvent: z.string().optional(),
+        mode: z.string().optional(),
+        province: z.string().optional(),
+        district: z.string().optional(),
+      })).optional(),
+      notes: z.string().optional(),
+    }).optional(),
+    locations: z.array(z.any()).optional(),
     financials: z.object({
       packagePrice: z.number().min(0).optional(),
       transportCost: z.number().min(0).optional(),

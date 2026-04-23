@@ -1,4 +1,4 @@
-import type { Order, TeamMember, PricingItem } from "./types";
+import type { Order, TeamMember, PricingItem, StatsSummary } from "./types";
 
 const API_BASE = '/api';
 
@@ -7,6 +7,11 @@ export const api = {
   getOrders: async (): Promise<Order[]> => {
     const res = await fetch(`${API_BASE}/booking`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch orders');
+    return res.json();
+  },
+  getLatestOrderNumber: async (): Promise<{ nextOrderNumber: string }> => {
+    const res = await fetch(`${API_BASE}/booking/latest-number`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch latest order number');
     return res.json();
   },
   getOrderById: async (id: string): Promise<Order> => {
@@ -26,7 +31,10 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create order');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to create order');
+    }
     return res.json();
   },
   updateOrder: async (id: string, data: Partial<Order>): Promise<Order> => {
@@ -36,7 +44,10 @@ export const api = {
       credentials: 'include',
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update order');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to update order');
+    }
     return res.json();
   },
   deleteOrder: async (id: string): Promise<void> => {
@@ -186,7 +197,7 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch events');
     return res.json();
   },
-  createManualEvent: async (data: { title: string; date: Date | string; description?: string, assignedTeam?: string[] }): Promise<any> => {
+  createManualEvent: async (data: { title: string; date: Date | string; description?: string, assignedTeam?: string[], isOverridable?: boolean }): Promise<any> => {
     const res = await fetch(`${API_BASE}/events/manual`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -205,5 +216,16 @@ export const api = {
       credentials: 'include',
     });
     if (!res.ok) throw new Error('Failed to delete manual event');
+  },
+  
+  // Reports & Analytics (Member 1)
+  /**
+   * Feature: Business Intelligence
+   * Fetches aggregated statistics from the backend for the dashboard.
+   */
+  getStatsSummary: async (): Promise<StatsSummary> => {
+    const res = await fetch(`${API_BASE}/booking/stats/summary`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch stats summary');
+    return res.json();
   }
 };

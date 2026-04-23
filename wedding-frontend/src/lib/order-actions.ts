@@ -1,24 +1,42 @@
+/**
+ * @file order-actions.ts
+ * @description Frontend Service Layer / Action Aggregator.
+ * This file serves as the abstraction layer between the React UI components 
+ * and the low-level API client. It handles data transformation, error logging,
+ * and result formatting for the frontend.
+ * 
+ * Featured Categories:
+ * - Order CRUD operations.
+ * - Payment and Financial Lifecycle.
+ * - Team & Assignment Management.
+ * - Workflow Tracking (Progress Steps).
+ */
+
 import { api } from "@/lib/api"
 import type { Order, TeamMember, PricingItem } from "@/lib/types"
 
-// --- Order Actions ---
+/**
+ * Action: Create Order
+ * Communicates with the backend to initialize a new booking.
+ * @param data - The validated order object from the form.
+ */
 export async function createOrder(data: Order) {
   try {
     const res: any = await api.createOrder(data);
     return { success: true, orderId: res._id, orderNumber: res.orderNumber }
-  } catch (e) {
-    console.error(e)
-    return { success: false }
+  } catch (e: any) {
+    console.error("Order creation failed:", e)
+    return { success: false, error: e.message }
   }
 }
 
 export async function updateOrder(id: string, data: Partial<Order>) {
   try {
-    await api.updateOrder(id, data);
-    return { success: true }
-  } catch (e) {
-    console.error(e)
-    return { success: false }
+    const res = await api.updateOrder(id, data);
+    return { success: true, order: res }
+  } catch (e: any) {
+    console.error("Order update failed:", e)
+    return { success: false, error: e.message }
   }
 }
 
@@ -26,9 +44,9 @@ export async function deleteOrder(id: string) {
   try {
     await api.deleteOrder(id);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -36,9 +54,9 @@ export async function updateOrderAgreement(id: string, agreementData: any) {
   try {
     await api.updateOrder(id, { agreementDetails: agreementData, agreementStatus: 'Signed' });
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -60,41 +78,54 @@ export async function ensureAgreementToken(id: string) {
   }
 }
 
-// --- Payment Actions ---
 export async function uploadPaymentProof(formData: FormData, orderId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // In a real app, you'd upload the file first then get the URL
-    // Here we'll simulate by updating the order with a mock URL and Pending status
-    const financials = {
-      paymentProof: {
-        url: "https://images.unsplash.com/photo-1554224155-169641357599?auto=format&fit=crop&q=80&w=400", // Sample receipt image
-        status: "Pending",
-        uploadedAt: new Date()
-      }
-    };
-    await api.updateOrder(orderId, { financials } as any);
+    // Strategy: Real File Upload via FormData
+    console.log('--- Frontend Upload Start ---');
+    console.log('OrderId:', orderId);
+    console.log('Has File:', formData.get('file') instanceof File);
+
+    const res = await fetch(`/api/agreement/upload-proof/${orderId}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Upload failed");
+    }
+
     return { success: true }
-  } catch (e) {
-    console.error(e);
-    return { success: false, error: (e as any).message || "Failed to update payment status" }
+  } catch (e: any) {
+    console.error("Payment proof upload failed:", e);
+    return { success: false, error: e.message || "Failed to upload payment proof" }
   }
 }
 
-export async function verifyPayment(orderId: string, status: "Verified" | "Rejected") {
+export async function verifyPayment(orderId: string, status: "Verified" | "Rejected", amount: number = 0): Promise<{ success: boolean; order?: any; error?: string }> {
   try {
     const order = await api.getOrderById(orderId);
+    
+    // Logic: Update Balance on Verification
+    // Feature: Automatically debit the entered amount from the outstanding balance.
+    let newBalance = order.financials.balance;
+    if (status === 'Verified') {
+        newBalance = Math.max(0, order.financials.balance - amount);
+    }
+
     const financials = {
       ...order.financials,
+      balance: newBalance,
       paymentProof: {
         ...(order.financials.paymentProof || { url: "", uploadedAt: new Date() }),
         status: status as "Verified" | "Rejected"
       }
     };
-    await api.updateOrder(orderId, { financials } as any);
-    return { success: true }
-  } catch(e) {
+    const updatedOrder = await api.updateOrder(orderId, { financials } as any);
+    return { success: true, order: updatedOrder }
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -113,9 +144,9 @@ export async function createPricingItem(data: Omit<PricingItem, "_id" | "updated
   try {
     await api.createPricingItem(data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -123,9 +154,9 @@ export async function updatePricingItem(id: string, data: Partial<PricingItem>) 
   try {
     await api.updatePricingItem(id, data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -133,9 +164,9 @@ export async function deletePricingItem(id: string) {
   try {
     await api.deletePricingItem(id);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -163,9 +194,9 @@ export async function createTeamMember(data: TeamMember) {
   try {
     await api.createTeamMember(data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -173,9 +204,9 @@ export async function updateTeamMember(id: string, data: Partial<TeamMember>) {
   try {
     await api.updateTeamMember(id, data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -183,33 +214,34 @@ export async function deleteTeamMember(id: string) {
   try {
     await api.deleteTeamMember(id);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
-// --- Progress Actions ---
+/**
+ * Action: Milestone Management
+ * Logic: Toggles the completion status of a specific workflow step.
+ * Demonstrates state manipulation on complex nested arrays.
+ */
 export async function updateOrderProgress(orderId: string, stepId: number) {
   try {
     const order = await api.getOrderById(orderId);
     let newProgress: any[] = [...(order.progress?.history || [])];
     
-    // If progress is empty, init it
+    // Feature: Auto-Initialization
+    // If an order lacks a progress history, provide a default template.
     if (newProgress.length === 0) {
       newProgress = [
         { id: 1, title: 'Contract Signed', description: 'Client has signed the agreement', completed: false, date: null },
         { id: 2, title: 'Advance Payment', description: 'Received 25,000 LKR advance', completed: false, date: null },
-        { id: 3, title: 'Pre-Shoot Completed', description: 'All pre-wedding shoots done', completed: false, date: null },
-        { id: 4, title: 'Event Date 1', description: 'Primary event videography', completed: false, date: null },
-        { id: 5, title: 'Event Date 2', description: 'Secondary event videography', completed: false, date: null },
         { id: 6, title: 'Full Payment', description: 'Received final balance', completed: false, date: null },
-        { id: 7, title: 'Editing Started', description: 'Post-production phase', completed: false, date: null },
-        { id: 8, title: 'First Draft Sent', description: 'Sent for client review', completed: false, date: null },
         { id: 9, title: 'Final Delivery', description: 'All products delivered', completed: false, date: null }
       ];
     }
     
+    // Strategy: Mutable modification on cloned array
     const index = newProgress.findIndex((p: any) => p.id === stepId);
     if (index >= 0) {
       newProgress[index].completed = !newProgress[index].completed;
@@ -224,9 +256,9 @@ export async function updateOrderProgress(orderId: string, stepId: number) {
       } 
     } as any);
     return { success: true }
-  } catch(e) {
-    console.error(e)
-    return { success: false }
+  } catch(e: any) {
+    console.error("Progress update failed:", e)
+    return { success: false, error: e.message }
   }
 }
 
@@ -245,10 +277,10 @@ export async function assignTeamMembers(orderId: string, eventType: string, memb
     const order = await api.getOrderById(orderId);
     let newAssignments: any = { ...(order.assignments || {}) };
     newAssignments[eventType] = memberIds;
-    await api.updateOrder(orderId, { assignments: newAssignments } as any);
-    return { success: true }
-  } catch(e) {
-    console.error(e)
-    return { success: false }
+    const res = await api.updateOrder(orderId, { assignments: newAssignments } as any);
+    return { success: true, order: res }
+  } catch(e: any) {
+    console.error("Team assignment failed:", e)
+    return { success: false, error: e.message }
   }
 }

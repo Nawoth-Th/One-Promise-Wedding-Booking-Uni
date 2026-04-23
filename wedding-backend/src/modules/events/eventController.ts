@@ -1,15 +1,28 @@
+/**
+ * @file eventController.ts
+ * @description Orchestrates the calendar view by aggregating both customer Orders 
+ * and internal Manual events. It also handles the creation of manual event blocks.
+ * 
+ * Features:
+ * - Event Aggregation: Combines data from different collections into a unified calendar format.
+ * - Conflict Detection: Ensures manual events do not overlap with existing orders.
+ */
+
 import { Request, Response } from 'express';
 import { Order } from '../booking/Order';
 import { Event } from './eventModel';
 import { startOfDay, endOfDay } from 'date-fns';
 
-// @desc    Get all events (Orders + Manual)
+/**
+ * @desc    Get all events (Orders + Manual) for the global calendar view.
+ * @route   GET /api/events
+ */
 export const getEvents = async (req: Request, res: Response) => {
     try {
-        // Fetch all non-cancelled orders
+        // Strategy: Data Aggregation - Loading customer commitments
         const orders = await Order.find({ status: { $ne: 'Cancelled' } });
         
-        // Extract dates from orders
+        // Extract dates and client info to format into 'Calendar Event' objects
         const orderEvents: any[] = [];
         orders.forEach(order => {
             const clientName = order.clientInfo.name;
@@ -63,6 +76,7 @@ export const getEvents = async (req: Request, res: Response) => {
             title: e.title,
             date: e.date,
             type: 'manual',
+            isOverridable: e.isOverridable,
             description: e.description,
             assignedTeam: e.assignedTeam
         }));
@@ -73,13 +87,17 @@ export const getEvents = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Create a manual event
+/**
+ * @desc    Create a manual block on the calendar (Clash detection enabled).
+ * @route   POST /api/events/manual
+ */
 export const createManualEvent = async (req: Request, res: Response) => {
     try {
-        const { title, date, description, assignedTeam } = req.body;
+        const { title, date, description, assignedTeam, isOverridable } = req.body;
         const eventDate = new Date(date);
 
-        // Overlap Check 1: Other manual events on same day
+        // Feature: Double-Booking Prevention Logic
+        // Check 1: Other manual events on same day
         const existingManual = await Event.findOne({
             date: {
                 $gte: startOfDay(eventDate),
@@ -110,6 +128,7 @@ export const createManualEvent = async (req: Request, res: Response) => {
             title, 
             date: eventDate, 
             description,
+            isOverridable: isOverridable || false,
             assignedTeam: assignedTeam || []
         });
         await newEvent.save();
@@ -167,10 +186,14 @@ export const updateEventDetails = async (req: Request, res: Response) => {
     }
 };
 
-// @desc    Sync with Google Calendar (Placeholder for Member 3)
+/**
+ * @desc    Sync with Google Calendar (Feature Placeholder).
+ * @status  Planned / Future Enhancement
+ */
 export const syncCalendar = async (req: Request, res: Response) => {
     try {
-        // Logic for Google Calendar integration would go here
+        // Architecture Note: This will serve as the integration point for 
+        // third-party calendar APIs in Phase 2.
         res.json({ message: 'Calendar sync initiated (Component 03)' });
     } catch (error) {
         res.status(500).json({ message: 'Calendar sync failed' });

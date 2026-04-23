@@ -1,11 +1,25 @@
+/**
+ * @file TeamMember.ts
+ * @description Data model for staff members and photographers.
+ * Stores contact info, roles, and availability status for the booking system.
+ * 
+ * Features:
+ * - Role-based assignments.
+ * - Automatic phone number sanitization.
+ * - Validation patterns for academic data integrity.
+ */
+
 import mongoose, { Document, Schema } from 'mongoose';
 
+/**
+ * ITeamMember Interface
+ */
 export interface ITeamMember extends Document {
-    name: string;
-    role: string;
-    email: string;
-    phone: string;
-    active: boolean;
+    name: string;   // Full name of the team member
+    role: string;   // Professional role (e.g., "Photographer", "Editor")
+    email: string;  // Contact email for automated notifications
+    phone: string;  // Contact phone number
+    active: boolean; // Toggle for administrative control
 }
 
 const teamMemberSchema = new Schema<ITeamMember>(
@@ -29,6 +43,10 @@ const teamMemberSchema = new Schema<ITeamMember>(
     }
 );
 
+/**
+ * Middleware: Pre-validate hook for phone normalization.
+ * Ensures all staff phone numbers are stored as pure numeric strings.
+ */
 teamMemberSchema.pre('validate', function (this: any) {
     if (this.phone) {
         this.phone = this.phone.replace(/\D/g, '');

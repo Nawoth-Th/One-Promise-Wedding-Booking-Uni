@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner"
 import { SRI_LANKA_PROVINCES } from "@/lib/sri-lanka"
 import { api } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import type { Location } from "@/lib/types"
 
 export default function LocationPage() {
@@ -26,6 +27,7 @@ export default function LocationPage() {
   const [newLink, setNewLink] = useState("")
   const [newProvince, setNewProvince] = useState("")
   const [newDistrict, setNewDistrict] = useState("")
+  const [showErrors, setShowErrors] = useState(false)
 
   useEffect(() => {
     fetchLocations()
@@ -44,14 +46,17 @@ export default function LocationPage() {
 
   const handleAddLocation = async () => {
     if (!newName || !newProvince || !newDistrict) {
-      toast.error("Please fill in all required fields")
+      setShowErrors(true)
+      toast.error("Please fill in all required fields marked in red")
       return
     }
 
-    if (newLink && !/google\.com\/maps|goo\.gl\/maps/.test(newLink)) {
+    if (newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/.test(newLink)) {
       toast.error("Invalid Google Maps link. Please enter a valid URL.")
       return
     }
+
+    setShowErrors(false)
 
     try {
       await api.createLocation({
@@ -100,9 +105,9 @@ export default function LocationPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Province</label>
+              <label className={cn("text-sm font-medium", showErrors && !newProvince && "text-destructive")}>Province</label>
               <Select onValueChange={(val) => { setNewProvince(val); setNewDistrict(""); }}>
-                <SelectTrigger>
+                <SelectTrigger className={cn(showErrors && !newProvince && "border-destructive ring-destructive")}>
                   <SelectValue placeholder="Select Province" />
                 </SelectTrigger>
                 <SelectContent>
@@ -111,12 +116,13 @@ export default function LocationPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {showErrors && !newProvince && <p className="text-[10px] text-destructive font-medium">Province is required</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">District</label>
+              <label className={cn("text-sm font-medium", showErrors && !newDistrict && "text-destructive")}>District</label>
               <Select onValueChange={setNewDistrict} value={newDistrict} disabled={!newProvince}>
-                <SelectTrigger>
+                <SelectTrigger className={cn(showErrors && !newDistrict && "border-destructive ring-destructive")}>
                   <SelectValue placeholder="Select District" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,15 +131,18 @@ export default function LocationPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {showErrors && !newDistrict && <p className="text-[10px] text-destructive font-medium">District is required</p>}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Location Name</label>
+              <label className={cn("text-sm font-medium", showErrors && !newName && "text-destructive")}>Location Name</label>
               <Input
                 placeholder="Hotel Name / Venue"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                className={cn(showErrors && !newName && "border-destructive ring-destructive")}
               />
+              {showErrors && !newName && <p className="text-[10px] text-destructive font-medium">Name is required</p>}
             </div>
 
             <div className="space-y-2">
@@ -142,9 +151,9 @@ export default function LocationPage() {
                 placeholder="https://maps.google.com/..."
                 value={newLink}
                 onChange={(e) => setNewLink(e.target.value)}
-                className={newLink && !/google\.com\/maps|goo\.gl\/maps/.test(newLink) ? "border-destructive" : ""}
+                className={newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/.test(newLink) ? "border-destructive" : ""}
               />
-              {newLink && !/google\.com\/maps|goo\.gl\/maps/.test(newLink) && (
+              {newLink && !/google\.com\/maps|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl/.test(newLink) && (
                 <p className="text-[10px] text-destructive font-medium">Must be a valid Google Maps link</p>
               )}
             </div>

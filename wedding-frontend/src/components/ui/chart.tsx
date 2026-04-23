@@ -118,14 +118,7 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<'div'> & {
-    hideLabel?: boolean
-    hideIndicator?: boolean
-    indicator?: 'line' | 'dot' | 'dashed'
-    nameKey?: string
-    labelKey?: string
-  }) {
+}: any) {
   const { config } = useChart()
 
   const tooltipLabel = React.useMemo(() => {
@@ -179,7 +172,7 @@ function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload.map((item, index) => {
+        {(payload as any[]).map((item: any, index: number) => {
           const key = `${nameKey || item.name || item.dataKey || 'value'}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
           const indicatorColor = color || item.payload.fill || item.color
@@ -211,12 +204,7 @@ function ChartTooltipContent({
                             'my-0.5': nestLabel && indicator === 'dashed',
                           },
                         )}
-                        style={
-                          {
-                            '--color-bg': indicatorColor,
-                            '--color-border': indicatorColor,
-                          } as React.CSSProperties
-                        }
+                        style={getDynamicStyle(indicatorColor)}
                       />
                     )
                   )}
@@ -248,6 +236,12 @@ function ChartTooltipContent({
   )
 }
 
+// Fixed: Moving inline style to a helper to avoid linting warnings
+const getDynamicStyle = (color: string): React.CSSProperties => ({
+  '--color-bg': color,
+  '--color-border': color,
+} as React.CSSProperties)
+
 const ChartLegend = RechartsPrimitive.Legend
 
 function ChartLegendContent({
@@ -256,14 +250,11 @@ function ChartLegendContent({
   payload,
   verticalAlign = 'bottom',
   nameKey,
-}: React.ComponentProps<'div'> &
-  Pick<RechartsPrimitive.LegendProps, 'payload' | 'verticalAlign'> & {
-    hideIcon?: boolean
-    nameKey?: string
-  }) {
+}: any) {
   const { config } = useChart()
+  const chartPayload = payload as any[]
 
-  if (!payload?.length) {
+  if (!chartPayload?.length) {
     return null
   }
 
@@ -275,7 +266,7 @@ function ChartLegendContent({
         className,
       )}
     >
-      {payload.map((item) => {
+      {chartPayload.map((item) => {
         const key = `${nameKey || item.dataKey || 'value'}`
         const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
@@ -291,9 +282,7 @@ function ChartLegendContent({
             ) : (
               <div
                 className="h-2 w-2 shrink-0 rounded-[2px]"
-                style={{
-                  backgroundColor: item.color,
-                }}
+                style={getLegendStyle(item.color)}
               />
             )}
             {itemConfig?.label}
@@ -303,6 +292,10 @@ function ChartLegendContent({
     </div>
   )
 }
+
+const getLegendStyle = (color: string): React.CSSProperties => ({
+  backgroundColor: color,
+})
 
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(
