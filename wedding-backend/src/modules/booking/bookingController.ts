@@ -187,7 +187,7 @@ export const updateOrder = async (req: Request, res: Response) => {
             // Store old assignments for change detection
             const oldAssignments = { ...(order.assignments || {}) };
 
-            // Overlap Validation for assignments
+            // Overlap & Fatigue Validation (Consecutive Days)
             if (req.body.assignments) {
                 const newAssignments = req.body.assignments;
                 const events: ("wedding" | "homecoming" | "engagement" | "preShoot")[] = ["wedding", "homecoming", "engagement", "preShoot"];
@@ -196,32 +196,69 @@ export const updateOrder = async (req: Request, res: Response) => {
                     const memberIds = newAssignments[eventType];
                     if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) continue;
 
-                    const eventDate = (req.body[eventType]?.date || order[eventType]?.date);
-                    if (!eventDate) continue;
+                    const eventDateStr = (req.body[eventType]?.date || order[eventType]?.date);
+                    if (!eventDateStr) continue;
 
-                    const targetDate = new Date(eventDate);
+                    const targetDate = new Date(eventDateStr);
                     targetDate.setHours(0, 0, 0, 0);
 
-                    // Check for overlaps in other orders
-                    const startOfDay = new Date(targetDate);
-                    const endOfDay = new Date(targetDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-
-                    const overlappingOrders = await Order.find({
-                        _id: { $ne: order._id },
-                        $or: [
-                            { 'wedding.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.wedding': { $in: memberIds } },
-                            { 'homecoming.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.homecoming': { $in: memberIds } },
-                            { 'engagement.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.engagement': { $in: memberIds } },
-                            { 'preShoot.date': { $gte: startOfDay, $lte: endOfDay }, 'assignments.preShoot': { $in: memberIds } }
-                        ]
-                    });
-
-                    if (overlappingOrders.length > 0) {
-                        return res.status(400).json({ 
-                            message: `Overlap detected: One or more members are already assigned to Order ${overlappingOrders[0].orderNumber} on this date.`,
-                            details: overlappingOrders.map(o => ({ orderNumber: o.orderNumber, date: targetDate }))
+                    // For each member, check their history for same-day overlap AND 3-day fatigue
+                    for (const memberId of memberIds) {
+                        // Find all orders involving this member
+                        const memberOrders = await Order.find({
+                            $or: [
+                                { 'assignments.wedding': memberId },
+                                { 'assignments.homecoming': memberId },
+                                { 'assignments.engagement': memberId },
+                                { 'assignments.preShoot': memberId }
+                            ]
                         });
+
+                        // Extract all dates this member is working, excluding current order's old dates
+                        const workingDays = new Set<string>();
+                        memberOrders.forEach(o => {
+                            if (o._id.toString() !== order._id.toString()) {
+                                if (o.wedding?.date && o.assignments?.wedding?.includes(memberId)) workingDays.add(new Date(o.wedding.date).toDateString());
+                                if (o.homecoming?.date && o.assignments?.homecoming?.includes(memberId)) workingDays.add(new Date(o.homecoming.date).toDateString());
+                                if (o.engagement?.date && o.assignments?.engagement?.includes(memberId)) workingDays.add(new Date(o.engagement.date).toDateString());
+                                if (o.preShoot?.date && o.assignments?.preShoot?.includes(memberId)) workingDays.add(new Date(o.preShoot.date).toDateString());
+                            }
+                        });
+
+                        // 1. Same Day Check
+                        if (workingDays.has(targetDate.toDateString())) {
+                            const collidingOrder = memberOrders.find(o => 
+                                o._id.toString() !== order._id.toString() && 
+                                (
+                                    (o.wedding?.date && new Date(o.wedding.date).toDateString() === targetDate.toDateString()) ||
+                                    (o.homecoming?.date && new Date(o.homecoming.date).toDateString() === targetDate.toDateString()) ||
+                                    (o.engagement?.date && new Date(o.engagement.date).toDateString() === targetDate.toDateString()) ||
+                                    (o.preShoot?.date && new Date(o.preShoot.date).toDateString() === targetDate.toDateString())
+                                )
+                            );
+                            return res.status(400).json({ 
+                                message: `Overlap detected: Team member is already assigned to Order ${collidingOrder?.orderNumber} on ${targetDate.toDateString()}.`
+                            });
+                        }
+
+                        // 2. Continuous 3-Day Fatigue Check
+                        // Helper to increment/decrement date
+                        const getOffsetDate = (date: Date, offset: number) => {
+                            const d = new Date(date);
+                            d.setDate(d.getDate() + offset);
+                            return d.toDateString();
+                        };
+
+                        const hasPrev1 = workingDays.has(getOffsetDate(targetDate, -1));
+                        const hasPrev2 = workingDays.has(getOffsetDate(targetDate, -2));
+                        const hasNext1 = workingDays.has(getOffsetDate(targetDate, 1));
+                        const hasNext2 = workingDays.has(getOffsetDate(targetDate, 2));
+
+                        if ((hasPrev1 && hasPrev2) || (hasPrev1 && hasNext1) || (hasNext1 && hasNext2)) {
+                            return res.status(400).json({ 
+                                message: `Fatigue Warning: Finalizing this assignment would result in 3 continuous working days for a team member (around ${targetDate.toDateString()}). Studio policy requires a rest day.`
+                            });
+                        }
                     }
                 }
             }

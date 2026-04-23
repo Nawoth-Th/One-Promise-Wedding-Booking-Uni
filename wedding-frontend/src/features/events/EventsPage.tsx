@@ -89,7 +89,10 @@ export default function EventsPage() {
       setSelectedTeam([])
       loadData()
     } catch (err: any) {
-      toast.error(err.message || "Failed to add event")
+      toast.error(err.message || "Failed to add event", {
+         description: "Check for team member overlaps or fatigue warnings.",
+         duration: 6000
+      })
     } finally {
       setIsSubmitting(false)
     }
