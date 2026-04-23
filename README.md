@@ -1,105 +1,72 @@
 # One Promise Photography Booking System
 
-![One Promise Logo](./wedding-frontend/public/one%20promise%20logo%20white.png)
+![One Promise Logo](./wedding-frontend/public/one%20promise%20logo%20Black.png)
 
-A comprehensive, internal booking and agreement management system designed for **One Promise Wedding Photography**. This application streamlines the client onboarding process, from order creation to digital agreement signing, automated PDF generation, team assignment with overlap prevention, and location management.
+A high-fidelity, industrial-grade wedding booking and lifecycle management system custom-engineered for **One Promise Wedding Photography**. This application orchestrates the entire photography production pipeline—from initial inquiry and automated branding to legal agreement compliance, financial tracking, and team deployment.
+
+---
 
 ## 🚀 Core Features
 
-### 📅 Order & Event Management
+### 📅 Advanced Booking & Intelligence
 
-- **Comprehensive Details**: Manage client info, event dates, and dynamic locations.
-- **Unified Events Calendar**: A master calendar view that combines automated bookings from orders with manual availability blocks.
-- **Manual Event Management**: Admins can manually add or delete events for specific days (e.g., maintenance, holidays, or private bookings).
-- **Overlap Prevention**: Intelligent logic that prevents manual bookings on days already occupied by orders or other manual events.
-- **Dynamic Pricing Engine**: Full database control over packages, add-ons, and fixed discounts.
-- **Location Library (Unified)**: Select from a pre-built library of Sri Lankan venues (Province/District/Venue) or enter locations manually with Google Maps links.
-- **Google Calendar Integration**: Automatically syncs events to the admin's calendar with full package details and location maps.
+- **Intelligent Order Numbering**: Automatically generates sequential, year-aware IDs (e.g., `OPW-2026-001`) with model-level encapsulation.
+- **Dynamic Pricing Engine**: Granular control over packages, professional add-ons, and fixed/percentage-based discounts.
+- **Unified Events Calendar**: Combines automated booking dates with manual "Availability Blocks" for the studio.
+- **Manual Event Management**: Admins can block specific days (maintenance, private shoots) with real-time overlap prevention logic.
 
-### 🤝 Team Assignment & Intelligence
+### 📜 Digital Agreement & Portal Workflow
 
-- **Team Assignment**: Assign photographers, editors, and other roles to specific event dates.
-- **Overlap Prevention**: Intelligent logic that prevents double-booking team members on the same day.
-- **Auto-Notifications**: Automatically sends email notifications to team members upon assignment.
+- **Glassmorphic Client Portal**: A secure, visual environment where clients track their media production journey.
+- **Branded Digital Signature**: Secure online signing with immediate transition to the financial onboarding phase.
+- **Payment Verification Cycle**: Clients upload receipts (via Cloudinary) directly through the portal with real-time status feedback.
+- **Smart PDF Generation**: Dynamic rendering of professional legal agreements with integrated TOS and pricing breakdowns.
 
-### 📜 Agreement Workflow & Client Portal
+### 📧 Automated Branding & Communication (NEW)
 
-- **Unified Client Portal**: A secure, glassmorphic portal for clients to manage their journey.
-- **Progress Tracker**: A 10-step visual milestone bar (from "Agreement & Payment" to "Archive & Complete").
-- **Digital Signing**: Secure workflow for clients to review and sign agreements electronically.
-- **Smart PDF Generation**: Instantly generates professional PDF agreements with full TOS and pricing breakdowns.
-- **Robust Data Validation**: Multi-layered validation using **Zod** (request schemas) and **Mongoose** (model-level constraints) to ensure data integrity.
-- **Automated Sanitization**: Model-level `pre('validate')` hooks automatically clean inputs (e.g., phone numbers) to prevent validation failures on legacy or formatted data.
-- **Payment Verification System**: Secure end-to-end workflow where clients upload proofs (PNG, JPG, PDF) with immediate success feedback, and administrators verify them via a dedicated dashboard.
-- **Enhanced Validation UX**: High-fidelity, submit-triggered validation system across all forms with localized red highlights and specifying-toast notifications for missing mandatory data.
+- **High-Fidelity Email System**: Automatically dispatches designer-grade HTML emails for every major milestone.
+- **Lifecycle Triggers**:
+  - **Welcome Email**: Sent instantly upon order creation with tracking tokens.
+  - **Payment Request**: Automatically sends mock bank details and advance payment instructions (Rs. 25,000/-) after signing.
+  - **Milestone Alerts**: 10-step progress updates (e.g., "Media Ingested", "Color Grading") sent automatically as editors advance the project.
+  - **Verification Receipts**: Instant branded confirmation for payment approvals or re-upload requests.
 
-### 📊 Reports & Advanced Analytics (NEW)
+### 📊 Real-Time Financial Intelligence
 
-- **Financial Performance**: Real-time tracking of revenue, average order value, and discount impact.
-- **Operational Insights**: Booking success rates, monthly trends, and package popularity analysis.
-- **Resource Utilization**: Data-driven visibility into team member workload and role distribution.
-- **Geographic Intel**: Analysis of venue popularity and geographical distribution across Sri Lanka using Recharts-backed data visualization.
+- **Financial Lookup Dashboard**: Admin-only lookup tool to see granular payment breakdowns (Paid, Balance, Overall) for any specific order.
+- **Geographic distribution**: View venue density across Sri Lanka's provinces and districts using interactive data visualizations.
+- **Operational Analytics**: Recharts-backed visibility into revenue trends, package performance, and discount distribution.
 
-### 🎓 Academic Excellence & Standards
+### 🤝 Team Deployment & Conflict Prevention
 
-- **Modular Stability**: Strict adherence to a feature-based architecture, ensuring isolated module development and easy scalability.
-- **Full-Stack Type Safety**: Shared TypeScript interfaces and automated API response types ensuring consistent data flow between the Node.js backend and React frontend.
+- **Location-Aware Assignments**: Assign photographers and editors based on venue data.
+- **Double-Booking Protection**: Advanced backend validation prevents assigning staff members to overlapping event dates.
+- **Staff Notifications**: Automated email alerts to team members specifying event details, dates, and client requirements.
 
 ---
 
-## 🛠 Tech Stack (MERN)
+## 🛠 Tech Stack (MERN Core)
 
 - **Frontend**: [React 19](https://react.dev/) + [Vite 7](https://vitejs.dev/) + [Tailwind CSS v4](https://tailwindcss.com/)
+- **UI Architecture**: [Shadcn/UI](https://ui.shadcn.com/) + [Framer Motion](https://www.framer.com/motion/) + [Radix UI](https://www.radix-ui.com/)
 - **Backend**: [Node.js](https://nodejs.org/) + [Express.js](https://expressjs.com/)
-- **Database**: [MongoDB](https://www.mongodb.com/) + [Mongoose](https://mongoosejs.com/)
-- **Email Service**: [Nodemailer](https://nodemailer.com/)
-- **PDF Engine**: [@react-pdf/renderer](https://react-pdf.org/)
-- **Data Visualization**: [Recharts](https://recharts.org/) for business intelligence dashboards.
-- **Components**: [Radix UI](https://www.radix-ui.com/) + [Lucide React](https://lucide.dev/)
-- **Validation**: [Zod](https://zod.dev/) + [React Hook Form](https://react-hook-form.com/)
+- **Database**: [MongoDB Atlas](https://www.mongodb.com/) + [Mongoose](https://mongoosejs.com/)
+- **Storage**: [Cloudinary](https://cloudinary.com/) (Secure Media & Receipt Handling)
+- **Communication**: [Nodemailer](https://nodemailer.com/) + Custom HTML Templating Engine
+- **Validation**: [Zod](https://zod.dev/) (Runtime schemas) + [React Hook Form](https://react-hook-form.com/)
 
 ---
 
-## 📂 Project Architecture (Modular Split)
+## 📂 Modular Architecture
 
-The system has been refactored into a feature-based architecture to support independent development by 4 team members.
+The system utilizes a **Feature-Based Architecture**, isolating logic into discrete modules to ensure scalability and maintainability.
 
-### Backend (`wedding-backend/src/modules`)
+### Module Split
 
-- **Core**: Auth, Shared models, and Middleware.
-- **Booking**: Order creation and Pricing engine.
-- **Agreement**: Agreement status and Portal token logic.
-- **Team-Location**: Team assignments and Location management.
-
-### Frontend (`wedding-frontend/src/features`)
-
-- **Shared**: Centralized API, Types, Utils, and Global constants.
-- **Booking**: `OrdersPage`, `OrderForm`, `PricingPage`.
-- **Agreement**: `AgreementsPage`, `ClientPortal`, `ProgressTracker`.
-- **Events**: `EventsPage` (Calendar View), `OrderDetailPage`.
-- **Reports**: `ReportsPage` (Analytics Dashboard with interactive charts).
-- **Team-Location**: `TeamPage`, `LocationPage`, `AssignmentTools`.
-
----
-
-## 👥 Team Collaboration Split
-
-This project is divided into 4 main modules. Each member is responsible for their designated feature folder in both frontend and backend.
-
-| Member | Responsibility | Core Directory |
-| :--- | :--- | :--- |
-| **Lead Developer** | **Base System & Booking** | `features/booking`, `modules/booking` |
-| **Member 2** | **Agreements & Portal** | `features/agreement`, `modules/agreement` |
-| **Member 3** | **Events & Orders** | `features/events`, `modules/core` (Order details) |
-| **Member 4** | **Team & Locations** | `features/team-location`, `modules/team-location` |
-
-### 🛠 Workflow for Members
-
-1. **Create a Branch**: `git checkout -b feature/your-name-module`
-2. **Work Independently**: Only modify files within your assigned feature/module folders.
-3. **Shared Resources**: If you need to change a shared utility or type, coordinate with the Lead Developer.
-4. **Pull Request**: Push your branch and create a PR to the `main` branch.
-5. **Merge**: Once the PR is merged, the system will integrate your component seamlessly.
+- **`booking`**: Order orchestration, pricing logic, and sequential ID generation.
+- **`agreement`**: Digital signature workflow, token management, and payment verification.
+- **`team-location`**: Staff deployment, venue library management, and overlap detection.
+- **`reports`**: Financial lookup tools and Recharts-driven business intelligence.
 
 ---
 
@@ -108,24 +75,22 @@ This project is divided into 4 main modules. Each member is responsible for thei
 ### Prerequisites
 
 - Node.js 18+
-- pnpm installed globally (`npm i -g pnpm`)
-- MongoDB (Local or Atlas)
-- SMTP Credentials (for Gmail/SES)
+- pnpm (`npm i -g pnpm`)
+- MongoDB Atlas Account
+- Cloudinary Account (for payment proof storage)
 
-### Installation & Development
+### Installation
 
-1. **Clone & Backend Setup**:
+1. **Backend Configuration**:
 
    ```bash
    cd wedding-backend
    pnpm install
-   # Create a .env file by copying .env.example
-   cp .env.example .env
-   # Edit .env with your credentials (see below)
+   cp .env.example .env # Configure variables in .env
    pnpm dev
    ```
 
-2. **Frontend Setup**:
+2. **Frontend Configuration**:
 
    ```bash
    cd ../wedding-frontend
@@ -133,40 +98,24 @@ This project is divided into 4 main modules. Each member is responsible for thei
    pnpm dev
    ```
 
-### ⚠️ Troubleshooting common issues
+### Environment Configuration (.env)
 
-If you encounter a `[vite] http proxy error` with `ECONNREFUSED` on the frontend, it almost always means the **backend script has crashed**. Please check your backend terminal for errors.
-
-**Common Backend Crashes:**
-
-- **MongoDB Connection Failure**: If you get a `querySrv ECONNREFUSED` error:
-  1. Ensure you have **whitelisted your IP** in the MongoDB Atlas dashboard.
-  2. Check if your current network (e.g., library/public Wi-Fi) blocks SRV lookups.
-  3. Ensure your `MONGODB_URI` in `.env` is correct.
-
-- **Missing .env**: Make sure you have created the `.env` file in the `wedding-backend` directory and filled it with valid credentials.
-
-### Environment Configuration
-
-#### Backend (`wedding-backend/.env`)
+Required keys for full system functionality:
 
 ```env
-PORT=5000
 MONGODB_URI=mongodb+srv://...
-JWT_SECRET=your_secret_key
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=465
+JWT_SECRET=secure_hex_key
+EMAIL_USER=onepromiseweddings.notify@gmail.com
+EMAIL_PASS=smtp_app_password
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
 FRONTEND_URL=http://localhost:5173
 ```
-
-#### Frontend (`wedding-frontend/.env`)
-
-Vite uses path aliases for modular imports. The main API endpoints are proxied via `vite.config.ts`.
 
 ---
 
 ## 📄 License
 
-Private - One Promise Wedding Photography.
+Private Intellectual Property - One Promise Wedding Photography.
+Internal use only for University Assessment & Deployment.
