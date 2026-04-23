@@ -32,11 +32,11 @@ export async function createOrder(data: Order) {
 
 export async function updateOrder(id: string, data: Partial<Order>) {
   try {
-    await api.updateOrder(id, data);
-    return { success: true }
-  } catch (e) {
-    console.error(e)
-    return { success: false }
+    const res = await api.updateOrder(id, data);
+    return { success: true, order: res }
+  } catch (e: any) {
+    console.error("Order update failed:", e)
+    return { success: false, error: e.message }
   }
 }
 
@@ -44,9 +44,9 @@ export async function deleteOrder(id: string) {
   try {
     await api.deleteOrder(id);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -54,9 +54,9 @@ export async function updateOrderAgreement(id: string, agreementData: any) {
   try {
     await api.updateOrder(id, { agreementDetails: agreementData, agreementStatus: 'Signed' });
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -123,9 +123,9 @@ export async function verifyPayment(orderId: string, status: "Verified" | "Rejec
     };
     const updatedOrder = await api.updateOrder(orderId, { financials } as any);
     return { success: true, order: updatedOrder }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -144,9 +144,9 @@ export async function createPricingItem(data: Omit<PricingItem, "_id" | "updated
   try {
     await api.createPricingItem(data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -154,9 +154,9 @@ export async function updatePricingItem(id: string, data: Partial<PricingItem>) 
   try {
     await api.updatePricingItem(id, data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -164,9 +164,9 @@ export async function deletePricingItem(id: string) {
   try {
     await api.deletePricingItem(id);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -194,9 +194,9 @@ export async function createTeamMember(data: TeamMember) {
   try {
     await api.createTeamMember(data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -204,9 +204,9 @@ export async function updateTeamMember(id: string, data: Partial<TeamMember>) {
   try {
     await api.updateTeamMember(id, data);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -214,9 +214,9 @@ export async function deleteTeamMember(id: string) {
   try {
     await api.deleteTeamMember(id);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error(e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -256,9 +256,9 @@ export async function updateOrderProgress(orderId: string, stepId: number) {
       } 
     } as any);
     return { success: true }
-  } catch(e) {
+  } catch(e: any) {
     console.error("Progress update failed:", e)
-    return { success: false }
+    return { success: false, error: e.message }
   }
 }
 
@@ -277,10 +277,10 @@ export async function assignTeamMembers(orderId: string, eventType: string, memb
     const order = await api.getOrderById(orderId);
     let newAssignments: any = { ...(order.assignments || {}) };
     newAssignments[eventType] = memberIds;
-    await api.updateOrder(orderId, { assignments: newAssignments } as any);
-    return { success: true }
-  } catch(e) {
-    console.error(e)
-    return { success: false }
+    const res = await api.updateOrder(orderId, { assignments: newAssignments } as any);
+    return { success: true, order: res }
+  } catch(e: any) {
+    console.error("Team assignment failed:", e)
+    return { success: false, error: e.message }
   }
 }

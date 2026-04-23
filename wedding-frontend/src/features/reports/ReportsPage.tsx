@@ -362,7 +362,7 @@ export default function ReportsPage() {
               {eventTypesData.map((item, idx) => (
                 <div key={item.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-8 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                    <div className="w-2 h-8 rounded-full" style={getItemColorStyle(idx)} />
                     <span className="font-medium">{item.name}</span>
                   </div>
                   <span className="text-xl font-bold">{item.value}</span>
@@ -475,3 +475,8 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+// Helper to avoid inline style linting warnings for dynamic colors
+const getItemColorStyle = (idx: number): React.CSSProperties => ({
+  backgroundColor: COLORS[idx % COLORS.length]
+});

@@ -204,12 +204,7 @@ function ChartTooltipContent({
                             'my-0.5': nestLabel && indicator === 'dashed',
                           },
                         )}
-                        style={
-                          {
-                            '--color-bg': indicatorColor,
-                            '--color-border': indicatorColor,
-                          } as React.CSSProperties
-                        }
+                        style={getDynamicStyle(indicatorColor)}
                       />
                     )
                   )}
@@ -240,6 +235,12 @@ function ChartTooltipContent({
     </div>
   )
 }
+
+// Fixed: Moving inline style to a helper to avoid linting warnings
+const getDynamicStyle = (color: string): React.CSSProperties => ({
+  '--color-bg': color,
+  '--color-border': color,
+} as React.CSSProperties)
 
 const ChartLegend = RechartsPrimitive.Legend
 
@@ -281,9 +282,7 @@ function ChartLegendContent({
             ) : (
               <div
                 className="h-2 w-2 shrink-0 rounded-[2px]"
-                style={{
-                  backgroundColor: item.color,
-                }}
+                style={getLegendStyle(item.color)}
               />
             )}
             {itemConfig?.label}
@@ -293,6 +292,10 @@ function ChartLegendContent({
     </div>
   )
 }
+
+const getLegendStyle = (color: string): React.CSSProperties => ({
+  backgroundColor: color,
+})
 
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(

@@ -53,38 +53,43 @@ export function TeamAssignment({
   }, [open, eventDate])
 
   const handleSelect = async (memberId: string) => {
-    const member = allMembers.find(m => m._id === memberId);
-    const isBusy = busyMemberIds.includes(memberId);
-
-    if (isBusy && !assignedMemberIds.includes(memberId)) {
-        if (!confirm(`Warning: ${member?.name} is already assigned to another event on this day. Do you still want to assign them?`)) {
-            return;
-        }
-    }
+    const isSelected = assignedMemberIds.includes(memberId);
+    
     // Toggle logic
     let newIds: string[];
-    if (assignedMemberIds.includes(memberId)) {
+    if (isSelected) {
       newIds = assignedMemberIds.filter((id) => id !== memberId);
     } else {
       newIds = [...assignedMemberIds, memberId];
     }
 
     // Call server action
-    // Optimistic update
+    // Step 1: Optimistic update (show change in UI immediately)
     onUpdate(newIds);
     setIsLoading(true);
 
-    const result = await assignTeamMembers(orderId, eventType, newIds);
-    
-    if (!result.success) {
-      toast.error("Failed to update assignments");
-      // Revert if failed (requires parent to handle revert or just re-fetch)
-      // For now, simpler to assume success or alert error.
-    } else {
-      toast.success("Assignments updated & emails sent!");
+    try {
+      const result = await assignTeamMembers(orderId, eventType, newIds);
+      
+      if (!result.success) {
+        // Step 2: Failed - Show specific error from backend and REVERT
+        toast.error(result.error || "Failed to update assignments", {
+           description: "The assignment was blocked by business rules.",
+           duration: 5000
+        });
+        onUpdate(assignedMemberIds); // Rollback to original state
+      } else {
+        // Step 3: Success
+        toast.success("Assignment confirmed", {
+           description: isSelected ? "Team member removed." : "Team member added and notified."
+        });
+      }
+    } catch (err: any) {
+      toast.error("Network error: Failed to reach server");
+      onUpdate(assignedMemberIds); // Rollback
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   }
 
   const assignedMembers = allMembers.filter((m) => assignedMemberIds.includes(m._id!));
